@@ -1,0 +1,56 @@
+Revision history for TAP-Parser
+
+0.11    25 July, 2006
+        - Renamed is_skip and is_todo to has_skip and has_todo.  Much less
+          confusing since a result responding true to those also responded
+          true to is_test.
+        - Added simplistic bin/tprove to run tests.  Much harder than I
+          thought and much code stolen from Test::Harness.
+        - Modified stolen iterator to fix a bug with stream handling when
+          extra newlines were encountered.
+        - Added TAPx::Parser::Iterator (stolen from Test::Harness::Iterator)
+        - Normalized internal structure of result objects.
+        - All tokens now have a 'type' key.  This greatly simplifies
+          internals.
+        - Copied much result POD info into the main docs.
+        - Corrected the bug report URLs.
+        - Minor updates to the grammar listed in the POD.
+
+0.10    23 July, 2006
+        - Oh my Larry, we gots docs!
+        - _parse and _tap are now private methods.
+        - Stream support has been added.
+        - Moved the grammar into its own class.
+        - Pulled remaining parser functionality out of lexer.
+        - Added type() method to Results().
+        - Parse errors no longer croak().  Instead, they are available through
+          the parse_errors() method.
+        - Added good_plan() method.
+        - tests_planned != tests_run is no longer a parse error.
+        - Renamed test_count() to tests_run().
+        - Renamed num_tests() to tests_planned().
+
+0.03    17 July, 2006
+        - 'Bail out!' is now handled.
+        - The parser is now data driven, thus skipping a huge if/else chain
+        - We now track all TODOs, SKIPs, passes and fails by test number.
+        - Removed all non-core modules.
+        - Store original line for each TAP line.  Available through
+          $result->raw().
+        - Renamed test is_ok() to passed() and added actual_passed().  The
+          former method takes into account TODO tests and the latter returns
+          the actual pass/fail status.
+        - Fixed a bug where SKIP tests would not be identified correctly.
+
+0.02    8 July, 2006
+        - Moved some lexer responsibility to the parser.  This will allow us
+          to eventually parse streams.
+        - Properly track passed/failed tests, even accounting for TODO.
+        - Added support for comments and unknown lines.
+        - Allow explicit and inferred test numbers to be mixed.
+        - Allow escaped hashes in the test description.
+        - Renamed to TAPx::Parser.  Will probably rename it again.
+
+0.01    Date/time
+        - First version, released on an unsuspecting world.
+        - No, you'll never know when ...

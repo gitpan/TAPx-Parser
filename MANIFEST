@@ -1,0 +1,37 @@
+# build info
+Build.PL
+Changes
+Makefile.PL
+MANIFEST
+META.yml			# Will be created by "make dist"
+README
+TODO
+
+# parsers
+lib/TAPx/Parser.pm
+lib/TAPx/Parser/Streamed.pm
+
+# helpers
+lib/TAPx/Parser/Iterator.pm
+examples/tprove
+
+# grammars
+lib/TAPx/Parser/Grammar.pm
+
+# result types
+lib/TAPx/Parser/Results.pm
+lib/TAPx/Parser/Results/Comment.pm
+lib/TAPx/Parser/Results/Plan.pm
+lib/TAPx/Parser/Results/Test.pm
+lib/TAPx/Parser/Results/Unknown.pm
+lib/TAPx/Parser/Results/Bailout.pm
+
+# tests
+t/00-load.t
+t/10-lex.t
+t/20-parse.t
+t/30-bailout.t
+t/40-errors.t
+t/50-streams.t
+t/pod-coverage.t
+t/pod.t

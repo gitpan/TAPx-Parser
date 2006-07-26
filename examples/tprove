@@ -1,0 +1,196 @@
+#!/usr/bin/perl
+
+eval 'exec /usr/bin/perl -w -S $0 ${1+"$@"}'
+  if 0;    # not running under some shell
+
+use strict;
+use warnings;
+use lib '/Users/curtispoe/code/TAPx-Parser/lib';
+
+#use lib '../lib';
+use TAPx::Parser;
+use TAPx::Parser::Iterator;
+
+autoflush( \*STDOUT );
+autoflush( \*STDERR );
+
+##############################################################################
+
+=head1 NAME
+
+tprove - Simple proof of concept for proving tests
+
+=head1 USAGE
+
+ tprove [ list of test files ]
+
+=head1 DESCRIPTION
+
+C<tprove> is not installed on your system unless you explicitly copy it
+somewhere in your path.  The current incarnation B<must> be run in a directory
+with both C<t/> and C<lib/> (i.e., the standard "root" level directory in
+which CPAN style modules are developed).  This will probably change in the
+future.  As noted, this is a proof of concept.
+
+=head1 CAVEATS
+
+This program requires C<File::Find::Rule>.  Also, it's not guaranteed to be
+terribly portable.  It will probably run on *nix based systems and might run
+on Windows.  It probably will die a painful death if you try it on VMS.
+Patches welcome.
+
+=head1 TODO
+
+I need to aggregate test results to make them more useful.  In other words, we
+need a summary report at the end.
+
+Optional colorization of the test output.
+
+Eventually throw on a TK interface just to let folks know what we can do.
+
+=cut
+
+use File::Find::Rule;
+my @tests = @ARGV
+  ? @ARGV
+  : File::Find::Rule->file->name('*.t')->in( shift || 't' );
+
+my @parsers;
+foreach my $test (@tests) {
+    my $command = get_command($test);
+    if ( open my $fh, "$command |" ) {
+
+        print "\nTesting $test\n";
+        my $result = [ $test => analyze_test( $test, $fh ) ];
+        push @parsers => $result;
+        close $fh;
+    }
+    else {
+        warn "Could not run ($test): $!\n";
+        next;
+    }
+}
+aggregate_results(@parsers);
+
+sub analyze_test {
+    my ( $test, $fh ) = @_;
+    my $stream = TAPx::Parser::Iterator->new($fh);
+
+    my $parser = TAPx::Parser->new( { stream => $stream } );
+    print "$test......\n";
+    while ( my $result = $parser->results ) {
+        print $result->as_string, $/;
+
+=head1 EXAMPLES
+
+If you wish to customize the behavior of your test harness, you ou can use the
+following and start filling things in if you wish.  Color test output,
+displaying results in a GUI or just about anything you can think of is now
+relatively straightforward.
+
+        if ( $result->is_test ) {
+            if ( $result->failed ) {
+            }
+            if ( $result->has_todo ) {
+                if ( $result->actual_passed ) {
+                    # test unexpectedly succeeded
+                }
+            }
+            elsif ( $result->has_skip ) {
+            }
+        }
+        elsif ( $result->is_comment ) {
+        }
+        elsif ( $result->is_plan ) {
+        }
+        elsif ( $result->is_bailout ) {
+        }
+        elsif ( $result->is_unknown ) {
+        }
+
+=cut
+        
+    }
+    unless ( $parser->failed ) {
+        print "ok\n";
+    }
+    else {
+        print "not ok.\nFailed: @{[$parser->failed]}\n";
+    }
+    return $parser;
+}
+
+sub aggregate_results {
+    my @parsers = @_;
+    my ( $passed, $failed, $total, $errors ) = (0) x 4;
+    foreach my $parser (@parsers) {
+        $passed += $parser->[1]->passed;
+        $failed += $parser->[1]->failed;
+        $total  += $parser->[1]->tests_run;
+        $errors += $parser->[1]->parse_errors;
+    }
+    print <<"    END_SUMMARY";
+Tests run:  $total
+Passed:     $passed
+Failed:     $failed
+Errors:     $errors
+    END_SUMMARY
+    if ($failed) {
+        foreach my $results (@parsers) {
+            my ( $test, $parser ) = @$results;
+            next unless $parser->failed;
+            my @failed = $parser->failed;
+            print "$test failed @failed\n";
+        }
+    }
+    if ($errors) {
+        foreach my $results (@parsers) {
+            my ( $test, $parser ) = @$results;
+            next unless $parser->parse_errors;
+            my $errors = "\n" . join "\n" => $parser->parse_errors;
+            print "$test errors $errors\n";
+        }
+    }
+}
+
+# Turns on autoflush for the handle passed
+sub autoflush {
+    my $flushed = shift;
+    my $old_fh  = select $flushed;
+    $| = 1;
+    select $old_fh;
+}
+
+sub get_command {
+    my $file = shift;
+    my $command;
+    if ( $^O =~ /^(MS)?Win32$/ ) {
+        eval "use Win32";
+
+        # I have no idea if this works
+        die "Couldn't use Win32: $@" if $@;
+        $command = Win32::GetShortPathName($^X);
+    }
+    else {
+        $command = $^X;
+    }
+    my $switches = switches($file);
+
+    $file = qq["$file"] if ( $file =~ /\s/ ) && ( $file !~ /^".*"$/ );
+    my $line = "$command -Ilib $switches $file";
+
+    return $line;
+}
+
+sub switches {
+    my $file = shift;
+    local *TEST;
+    open( TEST, $file ) or print "can't open $file. $!\n";
+    my $shebang = <TEST>;
+    close(TEST) or print "can't close $file. $!\n";
+
+    my @switches;
+    my $taint = ( $shebang =~ /^#!.*\bperl.*\s-\w*([Tt]+)/ );
+    push @switches, "-$1" if $taint;
+    return @switches ? join( ' ', @switches ) : '';
+}
