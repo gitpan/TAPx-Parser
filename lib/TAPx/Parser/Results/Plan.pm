@@ -3,10 +3,19 @@ package TAPx::Parser::Results::Plan;
 use strict;
 use warnings;
 use base 'TAPx::Parser::Results';
+use vars qw($VERSION);
 
 =head1 NAME
 
 TAPx::Parser::Results::Plan - Plan result token.
+
+=head1 VERSION
+
+Version 0.12
+
+=cut
+
+$VERSION = '0.12';
 
 =head1 DESCRIPTION
 
@@ -47,7 +56,7 @@ This is merely a synonym for C<as_string>.
 
 =cut
 
-sub plan          { shift->{raw} }
+sub plan { shift->{raw} }
 
 ##############################################################################
 

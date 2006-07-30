@@ -1,0 +1,147 @@
+#!/usr/bin/perl 
+use warnings;
+use strict;
+
+use lib 'lib';
+use TAPx::Parser;
+use TAPx::Parser::Iterator;
+use TAPx::Parser::Aggregator;
+
+#use Test::More 'no_plan';
+
+use Test::More tests => 32;
+
+my $tap = <<'END_TAP';
+1..5
+ok 1 - input file opened
+... this is junk
+not ok first line of the input valid # todo some data
+# this is a comment
+ok 3 - read the rest of the file
+not ok 4 - this is a real failure
+ok 5 # skip we have no description
+END_TAP
+
+my $stream = TAPx::Parser::Iterator->new( [ split /\n/ => $tap ] );
+my $parser1 = TAPx::Parser->new( { stream => $stream } );
+$parser1->run;
+
+$tap = <<'END_TAP';
+1..7
+ok 1 - gentleman, start your engines
+not ok first line of the input valid # todo some data
+# this is a comment
+ok 3 - read the rest of the file
+not ok 4 - this is a real failure
+ok 5 
+ok 6 - you shall not pass! # TODO should have failed
+not ok 7 - Gandalf wins.  Game over.  # TODO 'bout time!
+END_TAP
+
+my $parser2 = TAPx::Parser->new( { tap => $tap } );
+$parser2->run;
+
+can_ok 'TAPx::Parser::Aggregator', 'new';
+ok my $agg = TAPx::Parser::Aggregator->new,
+  '... and calling it should succeed';
+isa_ok $agg, 'TAPx::Parser::Aggregator', '... and the object it returns';
+
+can_ok $agg, 'add';
+ok $agg->add( 'tap1', $parser1 ), '... and calling it should succeed';
+ok $agg->add( 'tap2', $parser2 ), '... even if we add more than one parser';
+eval { $agg->add( 'tap1', $parser1 ) };
+like $@, qr/^You already have a parser for \Q(tap1)/,
+  '... but trying to reuse a description should be fatal';
+
+can_ok $agg, 'parsers';
+is scalar $agg->parsers, 2,
+  '... and it should report how many parsers it has';
+is_deeply [ $agg->parsers ], [ $parser1, $parser2 ],
+  '... or which parsers it has';
+is_deeply $agg->parsers('tap2'), $parser2, '... or reporting a single parser';
+is_deeply [ $agg->parsers(qw(tap2 tap1)) ], [ $parser2, $parser1 ],
+  '... or a group';
+
+# test aggregate results
+
+can_ok $agg, 'passed';
+is $agg->passed, 9,
+  '... and we should have the correct number of passed tests';
+is_deeply [ $agg->passed ], [qw(tap1 tap2)],
+  '... and be able to get their descriptions';
+
+can_ok $agg, 'failed';
+is $agg->failed, 3,
+  '... and we should have the correct number of failed tests';
+is_deeply [ $agg->failed ], [qw(tap1 tap2)],
+  '... and be able to get their descriptions';
+
+can_ok $agg, 'todo';
+is $agg->todo, 4,
+  '... and we should have the correct number of todo tests';
+is_deeply [ $agg->todo ], [qw(tap1 tap2)],
+  '... and be able to get their descriptions';
+
+can_ok $agg, 'skipped';
+is $agg->skipped, 1,
+  '... and we should have the correct number of skipped tests';
+is_deeply [ $agg->skipped ], [qw(tap1)],
+  '... and be able to get their descriptions';
+
+can_ok $agg, 'parse_errors';
+is $agg->parse_errors, 0, '... and the correct number of parse errors';
+is_deeply [ $agg->parse_errors ], [],
+  '... and be able to get their descriptions';
+
+can_ok $agg, 'todo_failed';
+is $agg->todo_failed, 1,
+  '... and the correct number of unexpectedly succeeded tests';
+is_deeply [ $agg->todo_failed ], [qw(tap2)],
+  '... and be able to get their descriptions';
+
+can_ok $agg, 'total';
+is $agg->total, $agg->passed + $agg->failed,
+  '... and we should have the correct number of total tests';
+
+__END__
+can_ok $parser, 'failed';
+is $parser->failed, 2, '... and the correct number of failed tests';
+is_deeply [ $parser->failed ], [ 4, 6 ],
+  '... and get a list of the failed tests';
+
+can_ok $parser, 'actual_passed';
+is $parser->actual_passed, 4,
+  '... and we should have the correct number of actually passed tests';
+is_deeply [ $parser->actual_passed ], [ 1, 3, 5, 6 ],
+  '... and get a list of the actually passed tests';
+
+can_ok $parser, 'actual_failed';
+is $parser->actual_failed, 3,
+  '... and the correct number of actually failed tests';
+is_deeply [ $parser->actual_failed ], [ 2, 4, 7 ],
+  '... or get a list of the actually failed tests';
+
+can_ok $parser, 'todo';
+is $parser->todo, 3,
+  '... and we should have the correct number of TODO tests';
+is_deeply [ $parser->todo ], [ 2, 6, 7 ],
+  '... and get a list of the TODO tests';
+
+can_ok $parser, 'skipped';
+is $parser->skipped, 1,
+  '... and we should have the correct number of skipped tests';
+is_deeply [ $parser->skipped ], [5],
+  '... and get a list of the skipped tests';
+
+# check the plan
+
+can_ok $parser, 'plan';
+is $parser->plan,          '1..5', '... and we should have the correct plan';
+is $parser->tests_planned, 5,      '... and the correct number of tests';
+
+# "Unexpectedly succeeded"
+can_ok $parser, 'todo_failed';
+is scalar $parser->todo_failed, 1,
+  '... and it should report the number of tests which unexpectedly succeeded';
+is_deeply [ $parser->todo_failed ], [6],
+  '... or *which* tests unexpectedly succeeded';

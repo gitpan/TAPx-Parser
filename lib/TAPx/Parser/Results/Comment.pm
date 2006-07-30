@@ -3,10 +3,19 @@ package TAPx::Parser::Results::Comment;
 use strict;
 use warnings;
 use base 'TAPx::Parser::Results';
+use vars qw($VERSION);
 
 =head1 NAME
 
 TAPx::Parser::Results::Comment - Comment result token.
+
+=head1 VERSION
+
+Version 0.12
+
+=cut
+
+$VERSION = '0.12';
 
 =head1 DESCRIPTION
 

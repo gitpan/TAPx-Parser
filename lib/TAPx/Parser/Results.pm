@@ -2,6 +2,7 @@ package TAPx::Parser::Results;
 
 use strict;
 use warnings;
+use vars qw($VERSION);
 
 use TAPx::Parser::Results::Plan;
 use TAPx::Parser::Results::Test;
@@ -22,6 +23,14 @@ BEGIN {
 =head1 NAME
 
 TAPx::Parser::Results - TAPx::Parser output
+
+=head1 VERSION
+
+Version 0.12
+
+=cut
+
+$VERSION = '0.12';
 
 =head2 DESCRIPTION
 

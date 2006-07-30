@@ -12,7 +12,7 @@ use TAPx::Parser;
 sub _get_results {
     my $parser = shift;
     my @results;
-    while ( my $result = $parser->results ) {
+    while ( my $result = $parser->next ) {
         push @results => $result;
     }
     return @results;

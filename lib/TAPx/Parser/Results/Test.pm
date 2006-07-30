@@ -3,10 +3,19 @@ package TAPx::Parser::Results::Test;
 use strict;
 use warnings;
 use base 'TAPx::Parser::Results';
+use vars qw($VERSION);
 
 =head1 NAME
 
 TAPx::Parser::Results::Test - Test result token.
+
+=head1 VERSION
+
+Version 0.12
+
+=cut
+
+$VERSION = '0.12';
 
 =head1 DESCRIPTION
 
@@ -132,6 +141,27 @@ of its TODO status.
 sub actual_passed {
     my $self = shift;
     return $self->{ok} !~ /not/;
+}
+
+##############################################################################
+
+=head3 C<todo_failed>
+
+  if ( $test->todo_failed ) {
+     # test unexpectedly succeeded
+  }
+
+If this is a TODO test and an 'ok' line, this method returns true.
+Otherwise, it will always return false (regardless of passing status on
+non-todo tests).
+
+This is used to track which tests unexpectedly succeeded.
+
+=cut
+
+sub todo_failed {
+    my $self = shift;
+    return $self->has_todo && $self->actual_passed;
 }
 
 ##############################################################################

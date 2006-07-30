@@ -2,6 +2,7 @@ package TAPx::Parser;
 
 use warnings;
 use strict;
+use vars qw($VERSION);
 
 use TAPx::Parser::Grammar;
 use TAPx::Parser::Results;
@@ -12,11 +13,11 @@ TAPx::Parser - Parse TAP output
 
 =head1 VERSION
 
-Version 0.11
+Version 0.12
 
 =cut
 
-our $VERSION = '0.11';
+$VERSION = '0.12';
 
 BEGIN {
     foreach my $method (
@@ -54,17 +55,20 @@ BEGIN {
     # or
     my $parser = TAPx::Parser->new( { stream => $stream_o_tap } );
     
-    while ( my $result = $parser->results ) {
+    while ( my $result = $parser->next ) {
         print $result->as_string;
     }
 
 =head1 DESCRIPTION
 
 C<TAPx::Parser> is designed to produce a proper parse of TAP output.  It is
-ALPHA code and should be treated as such.  For an example of how to run tests
-through this module, see the primitive harness in C<examples/tprove>.  That
-harness will likely fail on a few obscure systems such as VMS and Windows
-(fixing it for the latter should be easy.  Patches welcome).
+ALPHA code and should be treated as such.  The interface is now solid, but it
+is still subject to change.
+
+For an example of how to run tests through this module, see the primitive
+harness in C<examples/tprove>.  That harness will likely fail on a few obscure
+systems such as VMS and Windows (fixing it for the latter should be easy.
+Patches welcome).
 
 See the code of C<examples/tprove> to understand how to extend this.
 
@@ -94,6 +98,31 @@ C<undef>.
 
 =back
 
+Optionally, a "callback" key may be added.  If present, each callback
+corresponding to a given result type will be called with the result as the
+argument if the C<run> method is used:
+
+ my %callbacks = (
+     test    => \&test_callback,
+     plan    => \&plan_callback,
+     comment => \&comment_callback,
+     bailout => \&bailout_callback,
+     unknown => \&unknown_callback,
+ );
+ 
+ my $aggregator = TAPx::Parser::Aggregator->new;
+ foreach my $file ( @test_files ) {
+     my $stream = TAPx::Parser::Source::Perl->new($file);
+     my $parser = TAPx::Parser->new(
+         {
+             stream    => $stream,
+             callbacks => \%callbacks,
+         }
+     );
+     $parser->run;
+     $aggregator->add( $file, $parser );
+ }
+
 =cut
 
 sub new {
@@ -106,10 +135,10 @@ sub new {
 
 =head2 Instance methods
 
-=head3 C<results>
+=head3 C<next>
 
   my $parser = TAPx::Parser->new( { stream => $stream } );
-  while ( my $result = $parser->results ) {
+  while ( my $result = $parser->next ) {
       print $result->as_string, "\n";
   }
 
@@ -121,9 +150,30 @@ module and related classes for more information on how to use them.
 
 =cut
 
-sub results {
+sub next {
     my $self = shift;
     return shift @{ $self->{results} };
+}
+
+##############################################################################
+
+=head3 C<run>
+
+  $parser->run;
+
+This method merely runs the parser and parses all of the TAP.  If callbacks
+are used, it will attempt to call the appropriate callback with the TAP result
+as the argument.
+
+=cut
+
+sub run {
+    my $self = shift;
+    while ( defined (my $result = $self->next) ) {
+        if ( my $code = $self->_callback_for($result->type) ) {
+            $code->($result);
+        }
+    }
 }
 
 {
@@ -131,14 +181,12 @@ sub results {
     # of the following, anything beginning with an underscore is strictly
     # internal and should not be exposed.
     my %initialize = (
-        plan        => '',    # the test plan (e.g., 1..3)
-        _plan_found => 0,     # how many plans were found
-        tests_run   => 0,     # actual current test numbers
-        tap         => '',    # the TAP
-        _start_tap  => 0,
-        _end_tap    => 0,
-
-        # the following items are hashes because they are sparse arrays
+        _end_tap      => 0,
+        _plan_found   => 0,     # how many plans were found
+        _start_tap    => 0,
+        plan          => '',    # the test plan (e.g., 1..3)
+        tap           => '',    # the TAP
+        tests_run     => 0,     # actual current test numbers
         results       => [],    # TAP parser results
         skipped       => [],    #
         todo          => [],    #
@@ -146,6 +194,7 @@ sub results {
         failed        => [],    #
         actual_failed => [],    # how many tests really failed
         actual_passed => [],    # how many tests really passed
+        todo_failed   => [],    # tests which unexpectedly succeed
         parse_errors  => [],    # perfect TAP should have none
     );
 
@@ -158,7 +207,7 @@ sub results {
         if ( $stream && $tap ) {
             $self->_croak("You may not have both a stream and a tap parser");
         }
-        if ( $stream ) {
+        if ($stream) {
             require TAPx::Parser::Streamed;
             return TAPx::Parser::Streamed->new($arg_for);
         }
@@ -167,13 +216,20 @@ sub results {
         while ( my ( $k, $v ) = each %initialize ) {
             $self->{$k} = 'ARRAY' eq ref $v ? [] : $v;
         }
-        if ( $tap ) {
+        if ($tap) {
             $self->_tap($tap);
             $self->_parse;
         }
+        $arg_for->{callbacks} ||= {};
+        $self->{code_for} = $arg_for->{callbacks};
         $self->good_plan(1);    # will be reset at the end of parsing, if bad
         return $self;
     }
+}
+
+sub _callback_for {
+    my ($self, $callback) = @_;
+    return $self->{code_for}{$callback};
 }
 
 {
@@ -205,7 +261,7 @@ sub results {
         my $grammar = $self->_grammar;
         LINE: while ( defined( my $line = shift @remaining_tap ) ) {
             foreach my $type ( $grammar->token_types ) {
-                my $syntax  = $grammar->syntax_for($type);
+                my $syntax = $grammar->syntax_for($type);
                 if ( $line =~ $syntax ) {
                     my $handler = $grammar->handler_for($type);
                     push @tokens => $grammar->$handler($line);
@@ -230,7 +286,7 @@ sub _tap {
 
 If you've read this far in the docs, you've seen this:
 
-    while ( my $result = $parser->results ) {
+    while ( my $result = $parser->next ) {
         print $result->as_string;
     }
 
@@ -462,7 +518,7 @@ but had a TODO directive, it will be counted as a passed test.
 
 =cut
 
-sub passed        { @{ shift->{passed} } }
+sub passed { @{ shift->{passed} } }
 
 =head3 C<failed>
 
@@ -474,7 +530,7 @@ but had a TODO directive, it will be counted as a failed test.
 
 =cut
 
-sub failed        { @{ shift->{failed} } }
+sub failed { @{ shift->{failed} } }
 
 =head3 C<actual_passed>
 
@@ -516,7 +572,21 @@ This method lets you know which (or how many) tests had TODO directives.
 
 =cut
 
-sub todo          { @{ shift->{todo} } }
+sub todo { @{ shift->{todo} } }
+
+=head3 C<todo_failed>
+
+ # the test numbers which unexpectedly succeeded
+ my @todo_failed = $parser->todo_failed;
+ # the number of tests which unexpectedly succeeded 
+ my $todo_failed = $parser->todo_failed;
+
+This method lets you know which (or how many) tests actually passed but were
+declared as "TODO" tests.
+
+=cut
+
+sub todo_failed { @{ shift->{todo_failed} } }
 
 =head3 C<skipped>
 
@@ -527,7 +597,7 @@ This method lets you know which (or how many) tests had SKIP directives.
 
 =cut
 
-sub skipped       { @{ shift->{skipped} } }
+sub skipped { @{ shift->{skipped} } }
 
 ##############################################################################
 
@@ -555,7 +625,6 @@ Returns the number of tests which actually were run.  Hopefully this will
 match the number of C<< $parser->tests_planned >>.
 
 =cut
-
 
 =head3 C<parse_errors>
 
@@ -617,7 +686,7 @@ But this is not:
 
 =cut
 
-sub parse_errors  { @{ shift->{parse_errors} } }
+sub parse_errors { @{ shift->{parse_errors} } }
 
 sub _add_error {
     my ( $self, $error ) = @_;
@@ -629,19 +698,20 @@ sub _aggregate_results {
     my ( $self, $test ) = @_;
 
     my ( $actual, $status );
-    if ( $test->{ok} =~ /not/ ) {
-        $actual = 'actual_failed';
-        $status = 'TODO' eq $test->{directive} ? 'passed' : 'failed';
+    if ( $test->actual_passed ) {
+        $actual = 'actual_passed';
+        $status = 'TODO' eq $test->directive ? 'failed' : 'passed';
     }
     else {
-        $actual = 'actual_passed';
-        $status = 'TODO' eq $test->{directive} ? 'failed' : 'passed';
+        $actual = 'actual_failed';
+        $status = 'TODO' eq $test->directive ? 'passed' : 'failed';
     }
-    my $num = $test->{test_num};
-    push @{ $self->{todo} }    => $num if 'TODO' eq $test->{directive};
-    push @{ $self->{skipped} } => $num if 'SKIP' eq $test->{directive};
-    push @{ $self->{$actual} } => $num;
-    push @{ $self->{$status} } => $num;
+    my $num = $test->number;
+    push @{ $self->{todo} }        => $num if $test->has_todo;
+    push @{ $self->{skipped} }     => $num if $test->has_skip;
+    push @{ $self->{todo_failed} } => $num if $test->todo_failed;
+    push @{ $self->{$actual} }     => $num;
+    push @{ $self->{$status} }     => $num;
     return $self;
 }
 

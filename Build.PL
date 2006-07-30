@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use Module::Build;
+use 5.005;
 
 my $builder = Module::Build->new(
     module_name       => 'TAPx::Parser',

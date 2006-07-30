@@ -2,10 +2,19 @@ package TAPx::Parser::Grammar;
 
 use strict;
 use warnings;
+use vars qw($VERSION);
 
 =head1 NAME
 
 TAPx::Parser::Grammar - A grammar for the original TAP version.
+
+=head1 VERSION
+
+Version 0.12
+
+=cut
+
+$VERSION = '0.12';
 
 =head1 DESCRIPTION
 

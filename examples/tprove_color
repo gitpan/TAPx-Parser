@@ -8,6 +8,7 @@ use warnings;
 
 sub _print;
 use Getopt::Long;
+use Term::ANSIColor;
 
 GetOptions(
     'v|verbose' => \my $VERBOSE,
@@ -21,33 +22,27 @@ use TAPx::Parser::Source::Perl;
 
 =head1 NAME
 
-tprove - Simple proof of concept for proving tests
+tprove_color - Run tests with color.
 
 =head1 USAGE
 
- tprove [ list of test files ]
+ tprove_color [ list of test files ]
 
 =head1 DESCRIPTION
 
-C<tprove> is not installed on your system unless you explicitly copy it
-somewhere in your path.  The current incarnation B<must> be run in a directory
-with both C<t/> and C<lib/> (i.e., the standard "root" level directory in
-which CPAN style modules are developed).  This will probably change in the
-future.  As noted, this is a proof of concept.
+Try running this:
 
-Note that massive amounts of code have been lifted directly from
-C<Test::Harness::Straps>.
+  perl -Ilib examples/tprove_color --verbose examples/t/*.t
+
+C<Note>:  Current a bug stops this from running because of issues with not
+being able to dup filehandles with the callbacks.  I don't know why this is.
+See C<examples/tprove_color2>
 
 =head1 CAVEATS
 
 This is alpha code.  You've been warned.
 
 =head1 TODO
-
-I need to aggregate test results to make them more useful.  In other words, we
-need a summary report at the end.
-
-Optional colorization of the test output.
 
 Eventually throw on a TK interface just to let folks know what we can do.
 
@@ -64,9 +59,34 @@ else {
 
 my $aggregate = TAPx::Parser::Aggregator->new;
 my $source    = TAPx::Parser::Source::Perl->new;
+my %callbacks = (
+    test => sub {
+        my $test = shift;
+        if ( $test->passed && not $test->has_todo ) {
+            print color 'green';
+        }
+        elsif ( $test->failed ) {    # even if it's TODO
+            print color 'red';
+        }
+        elsif ( $test->has_skip ) {
+            print color 'yellow';
+
+        }
+        elsif ( $test->has_todo ) {
+            print color 'white';
+        }
+        print $test->as_string;
+        print color 'reset';
+        print "\n";
+    },
+);
 foreach my $test (@tests) {
     if ( my $stream = $source->filename($test)->get_stream ) {
-        my $parser = analyze_test( $test, $stream );
+        my $parser = TAPx::Parser->new(
+            {   stream    => $stream,
+                callbacks => \%callbacks,
+            }
+        );
         $aggregate->add( $test, $parser );
     }
     else {
@@ -89,25 +109,3 @@ Passed:     $passed
 Failed:     $failed
 Errors:     $errors
 END_SUMMARY
-
-sub analyze_test {
-    my ( $test, $stream ) = @_;
-
-    my $parser = TAPx::Parser->new( { stream => $stream } );
-    print "$test......";
-    while ( my $result = $parser->next ) {
-        _print $result->as_string, $/;
-    }
-    unless ( $parser->failed ) {
-        print "ok\n";
-    }
-    else {
-        print "not ok.\nFailed: @{[$parser->failed]}\n";
-    }
-    return $parser;
-}
-
-sub _print {
-    return unless $VERBOSE;
-    print @_;
-}

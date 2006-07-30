@@ -8,6 +8,7 @@ use warnings;
 
 sub _print;
 use Getopt::Long;
+use Term::ANSIColor;
 
 GetOptions(
     'v|verbose' => \my $VERBOSE,
@@ -21,33 +22,23 @@ use TAPx::Parser::Source::Perl;
 
 =head1 NAME
 
-tprove - Simple proof of concept for proving tests
+tprove_color2 - Run tests with color.
 
 =head1 USAGE
 
- tprove [ list of test files ]
+ tprove_color2 [ list of test files ]
 
 =head1 DESCRIPTION
 
-C<tprove> is not installed on your system unless you explicitly copy it
-somewhere in your path.  The current incarnation B<must> be run in a directory
-with both C<t/> and C<lib/> (i.e., the standard "root" level directory in
-which CPAN style modules are developed).  This will probably change in the
-future.  As noted, this is a proof of concept.
+Try running this:
 
-Note that massive amounts of code have been lifted directly from
-C<Test::Harness::Straps>.
+  perl -Ilib examples/tprove_color2 --verbose examples/t/*.t
 
 =head1 CAVEATS
 
 This is alpha code.  You've been warned.
 
 =head1 TODO
-
-I need to aggregate test results to make them more useful.  In other words, we
-need a summary report at the end.
-
-Optional colorization of the test output.
 
 Eventually throw on a TK interface just to let folks know what we can do.
 
@@ -96,7 +87,7 @@ sub analyze_test {
     my $parser = TAPx::Parser->new( { stream => $stream } );
     print "$test......";
     while ( my $result = $parser->next ) {
-        _print $result->as_string, $/;
+        _print $result;
     }
     unless ( $parser->failed ) {
         print "ok\n";
@@ -109,5 +100,26 @@ sub analyze_test {
 
 sub _print {
     return unless $VERBOSE;
-    print @_;
+    my $result = shift;
+    if ( $result->is_test ) {
+        if ( $result->passed && not $result->directive ) {
+            print color 'green';
+        }
+        elsif ( !$result->passed ) {    # even if it's TODO
+            print color 'white on_red';
+        }
+        elsif ( $result->has_skip ) {
+            print color 'white on_blue';
+
+        }
+        elsif ( $result->has_todo ) {
+            print color 'white';
+        }
+        print $result->as_string;
+        print color 'reset';
+        print "\n";
+    }
+    else {
+        print $result->as_string, $/;
+    }
 }

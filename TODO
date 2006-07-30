@@ -1,14 +1,14 @@
 TODO:
 
-    - Need something better to figure out which tests "Unexpectedly succeed"
-      (in other words, TODO tests which pass when they shouldn't).
-    - Allow description transformations to be applied.
-    - Figure out the namespace.
-    - Currently the error messages are not quite as helpful as they could be.
-      They could use line and test numbers.
-    - Identify junk lines by number.
+     - in t/20-parse.t, add test lines to comments before each section
+     - Add callbacks
+     - Allow description transformations to be applied.
+     - Figure out the namespace.
+     - Currently the error messages are not quite as helpful as they could be.
+       They could use line and test numbers.
+     - Identify junk lines by number.
 
 QUESTIONS:
 
-    - skipped lines should always be OK?  This should be a parse error.
-    - VMS 'not' and 'ok' on separate lines?
+     - skipped lines should always be OK?  This should be a parse error.
+     - VMS 'not' and 'ok' on separate lines?

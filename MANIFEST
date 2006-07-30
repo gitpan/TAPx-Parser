@@ -12,8 +12,13 @@ lib/TAPx/Parser.pm
 lib/TAPx/Parser/Streamed.pm
 
 # helpers
+lib/TAPx/Parser/Aggregator.pm
 lib/TAPx/Parser/Iterator.pm
+lib/TAPx/Parser/Source/Perl.pm
 examples/tprove
+examples/tprove_color
+examples/tprove_color2
+examples/t/10-stuff.t
 
 # grammars
 lib/TAPx/Parser/Grammar.pm
@@ -33,5 +38,7 @@ t/20-parse.t
 t/30-bailout.t
 t/40-errors.t
 t/50-streams.t
+t/60-aggregator.t
+t/70-callbacks.t
 t/pod-coverage.t
 t/pod.t

@@ -2,6 +2,7 @@ package TAPx::Parser::Streamed;
 
 use warnings;
 use strict;
+use vars qw($VERSION);
 
 use TAPx::Parser::Results;
 use base 'TAPx::Parser';
@@ -9,6 +10,14 @@ use base 'TAPx::Parser';
 =head1 NAME
 
 TAPx::Parser::Streamed - Parse TAP output from a stream
+
+=head1 VERSION
+
+Version 0.12
+
+=cut
+
+$VERSION = '0.12';
 
 =head1 DESCRIPTION
 
@@ -54,7 +63,7 @@ sub _lex {
 
     # all of this annoying current and next chunk stuff is to ensure that we
     # really do know if we're at the beginning or end of a stream.
-    sub results {
+    sub next {
         my $self = shift;
         if (@tokens) {
             return shift @tokens;
@@ -71,7 +80,7 @@ sub _lex {
         my $next_chunk = $self->_stream->next;
         if (! $current_chunk && $next_chunk ) {
             $current_chunk = $next_chunk;
-            return $self->results;
+            return $self->next;
         }
         unless ( defined $next_chunk ) {
             $self->_end_tap(1);
@@ -104,7 +113,7 @@ screams of the pod coverage tests.
 
 =item * C<_lex>
 
-=item * C<results>
+=item * C<next>
 
 =back
 

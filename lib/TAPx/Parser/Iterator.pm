@@ -2,11 +2,18 @@ package TAPx::Parser::Iterator;
 
 use strict;
 use vars qw($VERSION);
-$VERSION = 0.02;
 
 =head1 NAME
 
 TAPx::Parser::Iterator - Internal TAPx::Parser Iterator
+
+=head1 VERSION
+
+Version 0.12
+
+=cut
+
+$VERSION = '0.12';
 
 =head1 SYNOPSIS
 

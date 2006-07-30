@@ -6,38 +6,30 @@ use lib 'lib';
 
 #use Test::More 'no_plan';
 
-use Test::More tests => 121;
+use Test::More tests => 149;
 
-BEGIN {
-    use_ok 'TAPx::Parser' or die;
-}
+use TAPx::Parser;
 
 sub _get_results {
     my $parser = shift;
     my @results;
-    while ( my $result = $parser->results ) {
+    while ( my $result = $parser->next ) {
         push @results => $result;
     }
     return @results;
 }
 
-my ( $PARSER, $PLAN, $TEST, $COMMENT, $BAILOUT, $UNKNOWN );
-
-BEGIN {
-    $PARSER  = 'TAPx::Parser';
-    $PLAN    = 'TAPx::Parser::Results::Plan';
-    $TEST    = 'TAPx::Parser::Results::Test';
-    $COMMENT = 'TAPx::Parser::Results::Comment';
-    $BAILOUT = 'TAPx::Parser::Results::Bailout';
-    $UNKNOWN = 'TAPx::Parser::Results::Unknown';
-    foreach my $class ( $PARSER, $PLAN, $TEST, $COMMENT, $BAILOUT, $UNKNOWN )
-    {
-        use_ok $class or die;
-    }
-}
+my ( $PARSER, $PLAN, $TEST, $COMMENT, $BAILOUT, $UNKNOWN ) = qw(
+  TAPx::Parser
+  TAPx::Parser::Results::Plan
+  TAPx::Parser::Results::Test
+  TAPx::Parser::Results::Comment
+  TAPx::Parser::Results::Bailout
+  TAPx::Parser::Results::Unknown
+);
 
 my $tap = <<'END_TAP';
-1..5
+1..7
 ok 1 - input file opened
 ... this is junk
 not ok first line of the input valid # todo some data
@@ -45,6 +37,8 @@ not ok first line of the input valid # todo some data
 ok 3 - read the rest of the file
 not ok 4 - this is a real failure
 ok 5 # skip we have no description
+ok 6 - you shall not pass! # TODO should have failed
+not ok 7 - Gandalf wins.  Game over.  # TODO 'bout time!
 END_TAP
 
 can_ok $PARSER, 'new';
@@ -55,7 +49,7 @@ isa_ok $parser, $PARSER, '... and the object it returns';
 # results() is sane?
 
 ok my @results = _get_results($parser), 'The parser should return results';
-is scalar @results, 8, '... and there should be one for each line';
+is scalar @results, 10, '... and there should be one for each line';
 
 # check the test plan
 
@@ -64,10 +58,10 @@ isa_ok $result, $PLAN;
 can_ok $result, 'type';
 is $result->type, 'plan', '... and it should report the correct type';
 ok $result->is_plan,   '... and it should identify itself as a plan';
-is $result->plan,      '1..5', '... and identify the plan';
-is $result->as_string, '1..5',
+is $result->plan,      '1..7', '... and identify the plan';
+is $result->as_string, '1..7',
   '... and have the correct string representation';
-is $result->raw, '1..5', '... and raw() should return the original line';
+is $result->raw, '1..7', '... and raw() should return the original line';
 
 # a normal, passing test
 
@@ -206,34 +200,90 @@ is $test->as_string, 'ok 5 # SKIP we have no description',
 is $test->raw, 'ok 5 # skip we have no description',
   '... and raw() should return the original line';
 
+# a failing test, which also happens to have a directive
+# ok 6 - you shall not pass! # TODO should have failed
+
+$failed = shift @results;
+isa_ok $failed, $TEST;
+can_ok $failed, 'todo_failed';
+is $failed->type, 'test', 'TODO tests should parse correctly';
+ok $failed->is_test, '... and it should identify itself as a test';
+is $failed->ok, 'ok', '... and it should have the correct ok()';
+ok !$failed->passed, '... and TODO tests should reverse the sense of passing';
+ok $failed->actual_passed,
+  '... and the correct boolean version of actual_passed ()';
+is $failed->number, 6, '... and have the correct failed number';
+is $failed->description, '- you shall not pass!',
+  '... and the correct description';
+is $failed->directive, 'TODO', '... and should have the correct directive';
+is $failed->explanation, 'should have failed',
+  '... and the correct directive explanation';
+ok !$failed->has_skip, '... and it is not a SKIPped failed';
+ok $failed->has_todo,  '... but it is a TODO succeeded';
+is $failed->as_string, 'ok 6 - you shall not pass! # TODO should have failed',
+  '... and its string representation should be correct';
+is $failed->raw, 'ok 6 - you shall not pass! # TODO should have failed',
+  '... and raw() should return the original line';
+ok $failed->todo_failed,
+  '... todo_failed() should pass for TODO tests which unexpectedly succeed';
+
+# not ok 7 - Gandalf wins.  Game over.  # TODO 'bout time!
+
+my $passed = shift @results;
+isa_ok $passed, $TEST;
+can_ok $passed, 'todo_failed';
+is $passed->type, 'test', 'TODO tests should parse correctly';
+ok $passed->is_test, '... and it should identify itself as a test';
+is $passed->ok,      'not ok', '... and it should have the correct ok()';
+ok $passed->passed,  '... and TODO tests should reverse the sense of passing';
+ok !$passed->actual_passed,
+  '... and the correct boolean version of actual_passed ()';
+is $passed->number, 7, '... and have the correct passed number';
+is $passed->description, '- Gandalf wins.  Game over.',
+  '... and the correct description';
+is $passed->directive, 'TODO', '... and should have the correct directive';
+is $passed->explanation, "'bout time!",
+  '... and the correct directive explanation';
+ok !$passed->has_skip, '... and it is not a SKIPped passed';
+ok $passed->has_todo, '... but it is a TODO succeeded';
+is $passed->as_string,
+  "not ok 7 - Gandalf wins.  Game over. # TODO 'bout time!",
+  '... and its string representation should be correct';
+is $passed->raw, "not ok 7 - Gandalf wins.  Game over.  # TODO 'bout time!",
+  '... and raw() should return the original line';
+ok !$passed->todo_failed,
+  '... todo_failed() should not pass for TODO tests which failed';
+
 # test parse results
 
 can_ok $parser, 'passed';
-is $parser->passed, 4,
+is $parser->passed, 5,
   '... and we should have the correct number of passed tests';
-is_deeply [ $parser->passed ], [ 1, 2, 3, 5 ],
+is_deeply [ $parser->passed ], [ 1, 2, 3, 5, 7 ],
   '... and get a list of the passed tests';
 
 can_ok $parser, 'failed';
-is $parser->failed, 1, '... and the correct number of failed tests';
-is_deeply [ $parser->failed ], [4], '... and get a list of the failed tests';
+is $parser->failed, 2, '... and the correct number of failed tests';
+is_deeply [ $parser->failed ], [ 4, 6 ],
+  '... and get a list of the failed tests';
 
 can_ok $parser, 'actual_passed';
-is $parser->actual_passed, 3,
-  '... and we shold have the correct number of actually passed tests';
-is_deeply [ $parser->actual_passed ], [ 1, 3, 5 ],
+is $parser->actual_passed, 4,
+  '... and we should have the correct number of actually passed tests';
+is_deeply [ $parser->actual_passed ], [ 1, 3, 5, 6 ],
   '... and get a list of the actually passed tests';
 
 can_ok $parser, 'actual_failed';
-is $parser->actual_failed, 2,
+is $parser->actual_failed, 3,
   '... and the correct number of actually failed tests';
-is_deeply [ $parser->actual_failed ], [ 2, 4 ],
+is_deeply [ $parser->actual_failed ], [ 2, 4, 7 ],
   '... or get a list of the actually failed tests';
 
 can_ok $parser, 'todo';
-is $parser->todo, 1,
+is $parser->todo, 3,
   '... and we should have the correct number of TODO tests';
-is_deeply [ $parser->todo ], [2], '... and get a list of the TODO tests';
+is_deeply [ $parser->todo ], [ 2, 6, 7 ],
+  '... and get a list of the TODO tests';
 
 can_ok $parser, 'skipped';
 is $parser->skipped, 1,
@@ -244,6 +294,12 @@ is_deeply [ $parser->skipped ], [5],
 # check the plan
 
 can_ok $parser, 'plan';
-is $parser->plan,          '1..5', '... and we should have the correct plan';
-is $parser->tests_planned, 5,      '... and the correct number of tests';
+is $parser->plan,          '1..7', '... and we should have the correct plan';
+is $parser->tests_planned, 7,      '... and the correct number of tests';
 
+# "Unexpectedly succeeded"
+can_ok $parser, 'todo_failed';
+is scalar $parser->todo_failed, 1,
+  '... and it should report the number of tests which unexpectedly succeeded';
+is_deeply [ $parser->todo_failed ], [6],
+  '... or *which* tests unexpectedly succeeded';
