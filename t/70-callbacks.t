@@ -6,9 +6,7 @@ use lib 'lib';
 use TAPx::Parser;
 use TAPx::Parser::Iterator;
 
-#use Test::More 'no_plan';
-
-use Test::More tests => 3;
+use Test::More tests => 8;
 
 my $tap = <<'END_TAP';
 1..5
@@ -47,7 +45,44 @@ my $parser = TAPx::Parser->new(
 
 can_ok $parser, 'run';
 $parser->run;
-is $plan_output, '1..5',
-   'Plan callbacks should succeed';
-is scalar @tests, $parser->tests_run,
-    '... as should the test callbacks';
+is $plan_output, '1..5', 'Plan callbacks should succeed';
+is scalar @tests, $parser->tests_run, '... as should the test callbacks';
+
+@tests       = ();
+$plan_output = '';
+$todo        = 0;
+$skip        = 0;
+my $else = 0;
+my $all  = 0;
+%callbacks = (
+    test => sub {
+        my $test = shift;
+        push @tests => $test;
+        $todo++ if $test->has_todo;
+        $skip++ if $test->has_skip;
+    },
+    plan => sub {
+        my $plan = shift;
+        $plan_output = $plan->as_string;
+    },
+    ELSE => sub {
+         $else++;
+    },
+    ALL  => sub {
+         $all++;
+    },
+);
+
+$stream = TAPx::Parser::Iterator->new( [ split /\n/ => $tap ] );
+$parser = TAPx::Parser->new(
+    {   stream    => $stream,
+        callbacks => \%callbacks,
+    }
+);
+
+can_ok $parser, 'run';
+$parser->run;
+is $plan_output, '1..5', 'Plan callbacks should succeed';
+is scalar @tests, $parser->tests_run, '... as should the test callbacks';
+is $else, 2, '... and the correct number of "ELSE" lines should be seen';
+is $all, 8, '... and the correct total number of lines should be seen';

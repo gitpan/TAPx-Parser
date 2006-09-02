@@ -3,6 +3,7 @@ package TAPx::Parser::Source::Perl;
 use strict;
 use warnings;
 use vars qw($VERSION);
+use Symbol 'gensym';
 
 use constant IS_WIN32 => ( $^O =~ /^(MS)?Win32$/ );
 use constant IS_MACOS => ( $^O eq 'MacOS' );
@@ -16,11 +17,11 @@ TAPx::Parser::Source::Perl - Stream Perl output
 
 =head1 VERSION
 
-Version 0.12
+Version 0.20
 
 =cut
 
-$VERSION = '0.12';
+$VERSION = '0.20';
 
 =head1 DESCRIPTION
 
@@ -101,8 +102,9 @@ sub get_stream {
     # -| is safer, but not portable.
     # redirecting STDERR to STDOUT seems to keep them in sync
     # but I lose a bit of formatting for some reason
-    if ( open T_P_S_PERL_FH, "$command 2>&1 |" ) {
-        return TAPx::Parser::Iterator->new(\*T_P_S_PERL_FH);
+    my $sym = gensym;
+    if ( open $sym, "$command 2>&1 |" ) {
+        return TAPx::Parser::Iterator->new($sym);
     }
     else {
         $self->error("Could not execute ($command): $!");

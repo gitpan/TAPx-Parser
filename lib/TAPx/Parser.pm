@@ -13,11 +13,11 @@ TAPx::Parser - Parse TAP output
 
 =head1 VERSION
 
-Version 0.12
+Version 0.20
 
 =cut
 
-$VERSION = '0.12';
+$VERSION = '0.20';
 
 BEGIN {
     foreach my $method (
@@ -65,12 +65,8 @@ C<TAPx::Parser> is designed to produce a proper parse of TAP output.  It is
 ALPHA code and should be treated as such.  The interface is now solid, but it
 is still subject to change.
 
-For an example of how to run tests through this module, see the primitive
-harness in C<examples/tprove>.  That harness will likely fail on a few obscure
-systems such as VMS and Windows (fixing it for the latter should be easy.
-Patches welcome).
-
-See the code of C<examples/tprove> to understand how to extend this.
+For an example of how to run tests through this module, see the simple
+harnesses C<examples/>. 
 
 =head1 METHODS
 
@@ -170,7 +166,14 @@ as the argument.
 sub run {
     my $self = shift;
     while ( defined (my $result = $self->next) ) {
-        if ( my $code = $self->_callback_for($result->type) ) {
+        my $code;
+        if ( $code = $self->_callback_for($result->type) ) {
+            $code->($result);
+        }
+        elsif ( $code = $self->_callback_for('ELSE') ) {
+            $code->($result);
+        }
+        if ( my $code = $self->_callback_for('ALL') ) {
             $code->($result);
         }
     }
@@ -795,7 +798,7 @@ sub _finish {
     elsif ( $self->_plan_found > 1 ) {
         $self->_add_error("More than one plan found in TAP output");
     }
-    if ( $self->tests_run != $self->tests_planned ) {
+    if ( $self->tests_run != ($self->tests_planned || 0) ) {
         $self->good_plan(0);
     }
     if ( $self->tests_run != ( $self->passed + $self->failed ) ) {
@@ -816,6 +819,109 @@ sub _croak {
     require Carp;
     Carp::croak($message);
 }
+
+##############################################################################
+
+=head2 CALLBACKS
+
+As mentioned earlier, a "callback" key may be added may be added to the
+C<TAPx::Parser> constructor.  If present, each callback corresponding to a
+given result type will be called with the result as the argument if the C<run>
+method is used.  The callback is expected to be a subroutine reference (or
+anonymous subroutine) which is invoked with the parser result as its argument.
+
+ my %callbacks = (
+     test    => \&test_callback,
+     plan    => \&plan_callback,
+     comment => \&comment_callback,
+     bailout => \&bailout_callback,
+     unknown => \&unknown_callback,
+ );
+ 
+ my $aggregator = TAPx::Parser::Aggregator->new;
+ foreach my $file ( @test_files ) {
+     my $stream = TAPx::Parser::Source::Perl->new($file);
+     my $parser = TAPx::Parser->new(
+         {
+             stream    => $stream,
+             callbacks => \%callbacks,
+         }
+     );
+     $parser->run;
+     $aggregator->add( $file, $parser );
+ }
+
+There are, at the present time, seven keys allowed for callbacks.  These keys
+are case-sensitive.
+
+=over 4
+
+=item 1 C<test>
+
+Invoked if C<< $result->is_test >> returns true.
+
+=item 2 C<plan>
+
+Invoked if C<< $result->is_plan >> returns true.
+
+=item 3 C<comment>
+
+Invoked if C<< $result->is_comment >> returns true.
+
+=item 4 C<bailout>
+
+Invoked if C<< $result->is_unknown >> returns true.
+
+=item 5 C<unknown>
+
+Invoked if C<< $result->is_unknown >> returns true.
+
+=item 6 C<ELSE>
+
+If a result does not have a callback defined for it, this callback will be
+invoked.  Thus, if all five of the previous result types are specified as
+callbacks, this callback will I<never> be invoked.
+
+=item 7 C<ALL>
+
+This callback will always be invoked and this will happen for each result
+after one of the above six callsbacks is invoked.  For example, if
+C<Term::ANSIColor> is loaded, you could use the following to color your test
+output:
+
+ my %callbacks = (
+     test => sub {
+         my $test = shift;
+         if ( $test->passed && not $test->directive ) {
+             # normal passing test
+             print color 'green';
+         }
+         elsif ( !$test->passed ) {    # even if it's TODO
+             print color 'white on_red';
+         }
+         elsif ( $test->has_skip ) {
+             print color 'white on_blue';
+ 
+         }
+         elsif ( $test->has_todo ) {
+             print color 'white';
+         }
+     },
+     ELSE => sub {
+         # plan, comment, and so on (anything which isn't a test line)
+         print color 'black on_white';
+     },
+     ALL => sub {
+         # now print them
+         print shift->as_string;
+         print color 'reset';
+         print "\n";
+     },
+ );
+
+See C<examples/tprove_color> for an example of this.
+
+=back
 
 ##############################################################################
 

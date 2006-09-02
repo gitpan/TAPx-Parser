@@ -11,11 +11,11 @@ TAPx::Parser::Results::Plan - Plan result token.
 
 =head1 VERSION
 
-Version 0.12
+Version 0.20
 
 =cut
 
-$VERSION = '0.12';
+$VERSION = '0.20';
 
 =head1 DESCRIPTION
 

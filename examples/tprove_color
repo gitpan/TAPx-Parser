@@ -62,20 +62,25 @@ my $source    = TAPx::Parser::Source::Perl->new;
 my %callbacks = (
     test => sub {
         my $test = shift;
-        if ( $test->passed && not $test->has_todo ) {
+        if ( $test->passed && not $test->directive ) {
             print color 'green';
         }
-        elsif ( $test->failed ) {    # even if it's TODO
-            print color 'red';
+        elsif ( !$test->passed ) {    # even if it's TODO
+            print color 'white on_red';
         }
         elsif ( $test->has_skip ) {
-            print color 'yellow';
+            print color 'white on_blue';
 
         }
         elsif ( $test->has_todo ) {
             print color 'white';
         }
-        print $test->as_string;
+    },
+    ELSE => sub {
+        print color 'black on_white';
+    },
+    ALL => sub {
+        print shift->as_string;
         print color 'reset';
         print "\n";
     },
@@ -87,6 +92,7 @@ foreach my $test (@tests) {
                 callbacks => \%callbacks,
             }
         );
+        $parser->run;
         $aggregate->add( $test, $parser );
     }
     else {

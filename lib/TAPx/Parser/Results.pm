@@ -26,11 +26,11 @@ TAPx::Parser::Results - TAPx::Parser output
 
 =head1 VERSION
 
-Version 0.12
+Version 0.20
 
 =cut
 
-$VERSION = '0.12';
+$VERSION = '0.20';
 
 =head2 DESCRIPTION
 

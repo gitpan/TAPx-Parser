@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: TAPx-Parser
-version: 0.12
+version: 0.20
 author:
   - 'Curtis "Ovid" Poe <ovid@cpan.org>'
 abstract: "Parse TAP output"

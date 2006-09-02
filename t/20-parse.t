@@ -7,7 +7,6 @@ use lib 'lib';
 #use Test::More 'no_plan';
 
 use Test::More tests => 149;
-
 use TAPx::Parser;
 
 sub _get_results {

@@ -98,11 +98,17 @@ sub analyze_test {
     while ( my $result = $parser->next ) {
         _print $result->as_string, $/;
     }
-    unless ( $parser->failed ) {
+    if ( !$parser->failed && !$parser->parse_errors ) {
         print "ok\n";
     }
     else {
-        print "not ok.\nFailed: @{[$parser->failed]}\n";
+        print "not ok.\n";
+        if ( $parser->failed ) {
+             print "Failed: @{[$parser->failed]}\n";
+        }
+        if ( $parser->parse_errors ) {
+             print "Errors: @{[$parser->parse_errors]}\n";
+        }
     }
     return $parser;
 }

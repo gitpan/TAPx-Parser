@@ -1,6 +1,17 @@
 Revision history for TAP-Parser
 
-0.12
+0.20     2 September 2006
+         - Fixed bug reported by GEOFFR.  When no tap output was found, an
+           "Unitialized value" warning occurred.  
+         - Updated tprove to now report a test failure when no tap output
+           found.
+         - Removed examples/tprove_color2 as tprove_color now works.
+         - Vastly improved callback system and updated the docs for how to use
+           them.
+         - Changed TAPx::Parser::Source::Perl to use Symbol::gensym() instead
+           of a hard-to-guess filehandle name.
+
+0.12     30 July 2006
          - Added a test colorization script
          - Callback support added.
          - Added TAPx::Parser::Source::Perl.
@@ -63,5 +74,5 @@ Revision history for TAP-Parser
          - Renamed to TAPx::Parser.  Will probably rename it again.
 
 0.01     Date/time
-         - First version, released on an unsuspecting world.
+         - First version, unreleased on an unsuspecting world.
          - No, you'll never know when ...

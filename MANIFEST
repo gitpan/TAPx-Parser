@@ -15,9 +15,9 @@ lib/TAPx/Parser/Streamed.pm
 lib/TAPx/Parser/Aggregator.pm
 lib/TAPx/Parser/Iterator.pm
 lib/TAPx/Parser/Source/Perl.pm
+examples/README
 examples/tprove
 examples/tprove_color
-examples/tprove_color2
 examples/t/10-stuff.t
 
 # grammars
