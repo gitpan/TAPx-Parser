@@ -42,15 +42,6 @@ C<Test::Harness::Straps>.
 
 This is alpha code.  You've been warned.
 
-=head1 TODO
-
-I need to aggregate test results to make them more useful.  In other words, we
-need a summary report at the end.
-
-Optional colorization of the test output.
-
-Eventually throw on a TK interface just to let folks know what we can do.
-
 =cut
 
 use File::Find;

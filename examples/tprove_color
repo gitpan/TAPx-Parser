@@ -34,17 +34,12 @@ Try running this:
 
   perl -Ilib examples/tprove_color --verbose examples/t/*.t
 
-C<Note>:  Current a bug stops this from running because of issues with not
-being able to dup filehandles with the callbacks.  I don't know why this is.
-See C<examples/tprove_color2>
+Note that the colors are ugly.  Many colors have been tossed in so that you
+can see how flexible things are.
 
 =head1 CAVEATS
 
 This is alpha code.  You've been warned.
-
-=head1 TODO
-
-Eventually throw on a TK interface just to let folks know what we can do.
 
 =cut
 

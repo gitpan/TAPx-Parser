@@ -10,11 +10,11 @@ TAPx::Parser::Aggregator - Aggregate TAPx::Parser results.
 
 =head1 VERSION
 
-Version 0.20
+Version 0.21
 
 =cut
 
-$VERSION = '0.20';
+$VERSION = '0.21';
 
 =head1 SYNOPSIS
 
@@ -111,26 +111,22 @@ Trying to reuse a description is a fatal error.
 
 =cut
 
-{
-
-    sub add {
-        my ( $self, $description, $parser ) = @_;
-        if ( exists $self->{parser_for}{$description} ) {
-            $self->_croak("You already have a parser for ($description)");
-        }
-        push @{ $self->{parse_order} } => $description;
-        $self->{parser_for}{$description} = $parser;
-
-        while ( my ( $summary, $method ) = each %SUMMARY_METHOD_FOR ) {
-            if ( my $count = $parser->$method ) {
-                $self->{$summary} += $count;
-                push @{ $self->{"descriptions_for_$summary"} } =>
-                  $description;
-            }
-        }
-
-        return $self;
+sub add {
+    my ( $self, $description, $parser ) = @_;
+    if ( exists $self->{parser_for}{$description} ) {
+        $self->_croak("You already have a parser for ($description)");
     }
+    push @{ $self->{parse_order} } => $description;
+    $self->{parser_for}{$description} = $parser;
+
+    while ( my ( $summary, $method ) = each %SUMMARY_METHOD_FOR ) {
+        if ( my $count = $parser->$method ) {
+            $self->{$summary} += $count;
+            push @{ $self->{"descriptions_for_$summary"} } => $description;
+        }
+    }
+
+    return $self;
 }
 
 ##############################################################################
@@ -142,8 +138,8 @@ Trying to reuse a description is a fatal error.
   my @parsers = $aggregate->parsers(@descriptions);
 
 In scalar context without arguments, this method returns the number of parsers
-aggregated.  In list context without arguments, returns the parsers
-themselves, in the order they were added.
+aggregated.  In list context without arguments, returns the parsers in the
+order they were added.
 
 If arguments are used, these should be a list of descriptions used with the
 C<add> method.  Returns an array in list context or an array reference in

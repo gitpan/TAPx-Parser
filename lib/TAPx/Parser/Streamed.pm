@@ -13,11 +13,11 @@ TAPx::Parser::Streamed - Parse TAP output from a stream
 
 =head1 VERSION
 
-Version 0.20
+Version 0.21
 
 =cut
 
-$VERSION = '0.20';
+$VERSION = '0.21';
 
 =head1 DESCRIPTION
 
@@ -33,6 +33,7 @@ sub _initialize {
     $self->_stream($stream);
     $self->_start_tap(undef);
     $self->_end_tap(undef);
+    $self->_m_tokens([]);
     return $self;
 }
 
@@ -58,47 +59,43 @@ sub _lex {
     return @tokens;
 }
 
-{
-    my ( @tokens, $current_chunk );
-
-    # all of this annoying current and next chunk stuff is to ensure that we
-    # really do know if we're at the beginning or end of a stream.
-    sub next {
-        my $self = shift;
-        if (@tokens) {
-            return shift @tokens;
-        }
-        if ($current_chunk) {
-            if ( $self->_stream_started ) {
-                $self->_start_tap(0);
-            }
-            else {
-                $self->_start_tap(1);
-                $self->_stream_started(1);
-            }
-        }
-        my $next_chunk = $self->_stream->next;
-        if (! $current_chunk && $next_chunk ) {
-            $current_chunk = $next_chunk;
-            return $self->next;
-        }
-        unless ( defined $next_chunk ) {
-            $self->_end_tap(1);
-        }
-        if ( defined $current_chunk ) {
-            my @current_tokens = map {
-                my $result = TAPx::Parser::Results->new($_);
-                $self->_validate($result);
-                $result;
-            } $self->_lex($current_chunk);
-            my $token = shift @current_tokens;
-            push @tokens => @current_tokens;
-            $current_chunk = $next_chunk;
-            return $token;
-        }
-        $self->_finish;
-        return;
+# all of this annoying current and next chunk stuff is to ensure that we
+# really do know if we're at the beginning or end of a stream.
+sub next {
+    my $self = shift;
+    if (@{$self->_m_tokens}) {
+        return shift @{$self->_m_tokens};
     }
+    if ($self->_current_chunk) {
+        if ( $self->_stream_started ) {
+            $self->_start_tap(0);
+        }
+        else {
+            $self->_start_tap(1);
+            $self->_stream_started(1);
+        }
+    }
+    my $next_chunk = $self->_stream->next;
+    if (! $self->_current_chunk() && $next_chunk ) {
+        $self->_current_chunk($next_chunk);
+        return $self->next;
+    }
+    unless ( defined $next_chunk ) {
+        $self->_end_tap(1);
+    }
+    if ( defined $self->_current_chunk ) {
+        my @current_tokens = map {
+            my $result = TAPx::Parser::Results->new($_);
+            $self->_validate($result);
+            $result;
+        } $self->_lex($self->_current_chunk());
+        my $token = shift @current_tokens;
+        push @{$self->_m_tokens()} => @current_tokens;
+        $self->_current_chunk($next_chunk);
+        return $token;
+    }
+    $self->_finish;
+    return;
 }
 
 =head1 OVERRIDDEN METHODS

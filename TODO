@@ -1,5 +1,6 @@
 TODO:
 
+     - Have tprove duplicate all of the functionality of prove.
      - Allow description transformations to be applied.
      - Figure out the namespace.
      - Currently the error messages are not quite as helpful as they could be.

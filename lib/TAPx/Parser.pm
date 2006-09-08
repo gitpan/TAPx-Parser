@@ -13,11 +13,11 @@ TAPx::Parser - Parse TAP output
 
 =head1 VERSION
 
-Version 0.20
+Version 0.21
 
 =cut
 
-$VERSION = '0.20';
+$VERSION = '0.21';
 
 BEGIN {
     foreach my $method (
@@ -32,6 +32,8 @@ BEGIN {
         plan
         tests_planned
         tests_run
+        _m_tokens
+        _current_chunk
         >
       )
     {
@@ -327,7 +329,7 @@ examples of each, are as follows:
 
 Each result fetched is a result object of a different type.  There are common
 methods to each result object and different types may have methods unique to
-their type.  Sometimes a type method may be overridden in a subclass, but it's
+their type.  Sometimes a type method may be overridden in a subclass, but its
 use is guaranteed to be identical.
 
 =head2 Common type methods
@@ -885,7 +887,7 @@ callbacks, this callback will I<never> be invoked.
 =item 7 C<ALL>
 
 This callback will always be invoked and this will happen for each result
-after one of the above six callsbacks is invoked.  For example, if
+after one of the above six callbacks is invoked.  For example, if
 C<Term::ANSIColor> is loaded, you could use the following to color your test
 output:
 
@@ -927,7 +929,7 @@ See C<examples/tprove_color> for an example of this.
 
 =head1 TAP GRAMMAR
 
-The C<TAPx::Parser> does not use a formal grammar because TAP is essentiall a
+The C<TAPx::Parser> does not use a formal grammar because TAP is essentially a
 stream-based protocol.  In fact, it's quite legal to have an infinite stream.
 For the same reason that we don't apply regexes to streams, we're not using a
 formal grammar here.  Instead, we parse the TAP in lines (referred to
@@ -949,9 +951,10 @@ A formal grammar would look similar to the following:
  
  (* POSIX character classes and other terminals *)
  
- digit           ::= [:digit:]
- character       ::= [:print:]
- positiveInteger ::= (digit - '0') {digit}
+ digit              ::= [:digit:]
+ character          ::= [:print:]
+ positiveInteger    ::= ( digit - '0' ) {digit}
+ nonNegativeInteger ::= digit {digit}
  
  (* And on to the real grammar ... *)
  
@@ -959,18 +962,18 @@ A formal grammar would look similar to the following:
  
  tap    ::= plan tests | tests plan 
  
- plan   ::= '1..' positiveInteger "\n"
+ plan   ::= '1..' nonNegativeInteger "\n"
  
  (* Gotta have at least one test *)
  
  tests  ::= test {test}
  
  (* 
-     The "positiveNumber" is the test number and should 
+     The "positiveInteger" is the test number and should 
      always be one greater than the previous test number.
  *)
     
- test   ::= status (positiveNumber description)? directive? "\n"
+ test   ::= status (positiveInteger description)? directive? "\n"
  
  status ::= 'not '? 'ok '
  
@@ -987,7 +990,21 @@ A formal grammar would look similar to the following:
 
 Far too many for me to remember all of them, but let me just say 'thanks' to
 the members of the perl-qa list for answering most of my silly questions about
-strange areas of TAP.
+strange areas of TAP.  Here are a few who spring to mind:
+
+=over 4
+
+=item * Michael Schwern
+
+=item * Andy Lester
+
+=item * chromatic
+
+=item * GEOFFR
+
+=item * Shlomi Fish
+
+=back
 
 =head1 AUTHOR
 
@@ -1000,8 +1017,6 @@ C<bug-tapx-parser@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=TAPx-Parser>.
 I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.
-
-=head1 ACKNOWLEDGEMENTS
 
 =head1 COPYRIGHT & LICENSE
 

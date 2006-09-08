@@ -1,8 +1,20 @@
 Revision history for TAP-Parser
 
+0.21     8 September 2006
+         - Included experimental GTK interface written by Torsten Schoenfeld.
+         - Fixed bad docs in examples/tprove_color
+         - Applied patch from Shlomi Fish fixing bug where runs from one
+           stream could leak into another when bailing out.
+           [rt.cpan.org #21379] 
+         - Fixed some typos in the POD.
+         - Corrected the grammar to allow for a plan of "1..0" (infinite
+           stream).
+         - Started to add proper acknowledgements.
+
 0.20     2 September 2006
          - Fixed bug reported by GEOFFR.  When no tap output was found, an
            "Unitialized value" warning occurred.  
+           [rt.cpan.org #21205]
          - Updated tprove to now report a test failure when no tap output
            found.
          - Removed examples/tprove_color2 as tprove_color now works.
