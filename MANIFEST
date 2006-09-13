@@ -41,6 +41,8 @@ t/50-streams.t
 t/60-aggregator.t
 t/70-callbacks.t
 t/80-premature-bailout.t
+t/90-iterators.t
+
 # tests
 TODO
 t/pod-coverage.t

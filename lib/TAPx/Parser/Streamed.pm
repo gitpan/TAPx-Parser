@@ -13,11 +13,11 @@ TAPx::Parser::Streamed - Parse TAP output from a stream
 
 =head1 VERSION
 
-Version 0.21
+Version 0.22
 
 =cut
 
-$VERSION = '0.21';
+$VERSION = '0.22';
 
 =head1 DESCRIPTION
 
@@ -33,13 +33,12 @@ sub _initialize {
     $self->_stream($stream);
     $self->_start_tap(undef);
     $self->_end_tap(undef);
-    $self->_m_tokens([]);
     return $self;
 }
 
 sub _lex {
     my ( $self, $tap ) = @_;
-    my @remaining_tap = split /\n/, $tap;
+    my @remaining_tap = $tap !~ /\n/ ? $tap : split /\n/, $tap;
 
     my @tokens;
     my $grammar = $self->_grammar;
@@ -47,7 +46,7 @@ sub _lex {
 
         # XXX this is going to cause issues with streams
         foreach my $type ( $grammar->token_types ) {
-            my $syntax  = $grammar->syntax_for($type);
+            my $syntax = $grammar->syntax_for($type);
             if ( $line =~ $syntax ) {
                 my $handler = $grammar->handler_for($type);
                 push @tokens => $grammar->$handler($line);
@@ -59,43 +58,26 @@ sub _lex {
     return @tokens;
 }
 
-# all of this annoying current and next chunk stuff is to ensure that we
-# really do know if we're at the beginning or end of a stream.
 sub next {
-    my $self = shift;
-    if (@{$self->_m_tokens}) {
-        return shift @{$self->_m_tokens};
-    }
-    if ($self->_current_chunk) {
-        if ( $self->_stream_started ) {
-            $self->_start_tap(0);
-        }
-        else {
-            $self->_start_tap(1);
-            $self->_stream_started(1);
-        }
-    }
-    my $next_chunk = $self->_stream->next;
-    if (! $self->_current_chunk() && $next_chunk ) {
-        $self->_current_chunk($next_chunk);
-        return $self->next;
-    }
-    unless ( defined $next_chunk ) {
+    my $self   = shift;
+    my $stream = $self->_stream;
+    return if $stream->last;
+    my $next = $stream->next;
+    $self->_start_tap( $stream->first ? 1 : 0 );
+
+    my $token = TAPx::Parser::Results->new( $self->_lex($next) );
+
+    # must set _end_tap first or else _validate chokes on ending plans
+    if ( $stream->last ) {
         $self->_end_tap(1);
     }
-    if ( defined $self->_current_chunk ) {
-        my @current_tokens = map {
-            my $result = TAPx::Parser::Results->new($_);
-            $self->_validate($result);
-            $result;
-        } $self->_lex($self->_current_chunk());
-        my $token = shift @current_tokens;
-        push @{$self->_m_tokens()} => @current_tokens;
-        $self->_current_chunk($next_chunk);
-        return $token;
+    $self->_validate($token);
+
+    # must call _finish after _validate
+    if ( $stream->last ) {
+        $self->_finish;
     }
-    $self->_finish;
-    return;
+    return $token;
 }
 
 =head1 OVERRIDDEN METHODS

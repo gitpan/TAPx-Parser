@@ -11,6 +11,7 @@ use Getopt::Long;
 
 GetOptions(
     'v|verbose' => \my $VERBOSE,
+    'lib'       => \my $LIB,
 );
 
 use TAPx::Parser;
@@ -38,6 +39,16 @@ future.  As noted, this is a proof of concept.
 Note that massive amounts of code have been lifted directly from
 C<Test::Harness::Straps>.
 
+=head1 SWITCHES
+
+Print all test lines:
+
+ --verbose
+
+Include C<lib/>
+
+ --lib
+
 =head1 CAVEATS
 
 This is alpha code.  You've been warned.
@@ -55,6 +66,7 @@ else {
 
 my $aggregate = TAPx::Parser::Aggregator->new;
 my $source    = TAPx::Parser::Source::Perl->new;
+$source->switches('-Ilib') if $LIB;
 foreach my $test (@tests) {
     if ( my $stream = $source->filename($test)->get_stream ) {
         my $parser = analyze_test( $test, $stream );
@@ -86,7 +98,7 @@ sub analyze_test {
 
     my $parser = TAPx::Parser->new( { stream => $stream } );
     print "$test......";
-    while ( my $result = $parser->next ) {
+    while ( defined (my $result = $parser->next) ) {
         _print $result->as_string, $/;
     }
     if ( !$parser->failed && !$parser->parse_errors ) {

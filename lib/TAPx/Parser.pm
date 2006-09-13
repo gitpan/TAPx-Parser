@@ -13,11 +13,11 @@ TAPx::Parser - Parse TAP output
 
 =head1 VERSION
 
-Version 0.21
+Version 0.22
 
 =cut
 
-$VERSION = '0.21';
+$VERSION = '0.22';
 
 BEGIN {
     foreach my $method (
@@ -32,8 +32,6 @@ BEGIN {
         plan
         tests_planned
         tests_run
-        _m_tokens
-        _current_chunk
         >
       )
     {
@@ -1003,6 +1001,8 @@ strange areas of TAP.  Here are a few who spring to mind:
 =item * GEOFFR
 
 =item * Shlomi Fish
+         
+=item * Torsten Schoenfeld
 
 =back
 

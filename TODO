@@ -1,5 +1,12 @@
 TODO:
 
+     - The 'result' objects are currently blessing hashrefs.  This is bad.
+       Instead, they should have proper getter/setters to provide future
+       support for subclassing.
+     - Simplify constructor.  Let them pass a 'source' key which points to an
+       aref, glob, or string.
+     - comments after plan are OK?
+     - Horrible idea:  have Mac's voice synthesis tell you when tests fail!
      - Have tprove duplicate all of the functionality of prove.
      - Allow description transformations to be applied.
      - Figure out the namespace.

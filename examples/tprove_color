@@ -54,6 +54,7 @@ else {
 
 my $aggregate = TAPx::Parser::Aggregator->new;
 my $source    = TAPx::Parser::Source::Perl->new;
+$source->switches('-Ilib');
 my %callbacks = (
     test => sub {
         my $test = shift;

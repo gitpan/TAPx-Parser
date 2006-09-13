@@ -9,11 +9,11 @@ TAPx::Parser::Iterator - Internal TAPx::Parser Iterator
 
 =head1 VERSION
 
-Version 0.21
+Version 0.22
 
 =cut
 
-$VERSION = '0.21';
+$VERSION = '0.22';
 
 =head1 SYNOPSIS
 
@@ -22,8 +22,10 @@ $VERSION = '0.21';
   my $it = TAPx::Parser::Iterator->new(\@array);
 
   my $line = $it->next;
+  if ( $it->first ) { ... }
+  if ( $it->last ) { ... }
 
-Gratuitously ripped off from C<Test::Harness>.
+Originally ripped off from C<Test::Harness>.
 
 =head1 DESCRIPTION
 
@@ -39,21 +41,25 @@ Create an iterator.
 
 Iterate through it, of course.
 
+=head2 first()
+
+Returns true if on the first line.  Must be called I<after> C<next()>.
+
+=head2 last()
+
+Returns true if on or after the last line.  Must be called I<after> C<next()>.
+
 =cut
 
 sub new {
-    my($proto, $thing) = @_;
+    my ( $proto, $thing ) = @_;
 
     my $self = {};
-    if( ref $thing eq 'GLOB' ) {
-        bless $self, 'TAPx::Parser::Iterator::FH';
-        $self->{fh} = $thing;
+    if ( ref $thing eq 'GLOB' ) {
+        return TAPx::Parser::Iterator::FH->new($thing);
     }
-    elsif( ref $thing eq 'ARRAY' ) {
-        bless $self, 'TAPx::Parser::Iterator::ARRAY';
-        $self->{idx}   = 0;
-        chomp @$thing;
-        $self->{array} = $thing;
+    elsif ( ref $thing eq 'ARRAY' ) {
+        return TAPx::Parser::Iterator::ARRAY->new($thing);
     }
     else {
         warn "Can't iterate with a ", ref $thing;
@@ -63,21 +69,67 @@ sub new {
 }
 
 package TAPx::Parser::Iterator::FH;
-sub next {
-    my $fh = $_[0]->{fh};
 
-    # readline() doesn't work so good on 5.5.4.
-    local $/ = "\n";
-    my $line = scalar <$fh> or return;
-    chomp $line;
-    return $line;
+@TAPx::Parser::Iterator::FH::ISA = 'TAPx::Parser::Iterator';
+
+sub new {
+    my ( $class, $thing ) = @_;
+    bless {
+        fh    => $thing,
+        first => undef,
+        next  => undef,
+        last  => undef,
+    }, $class;
 }
 
+sub first { $_[0]->{first} }
+sub last  { $_[0]->{last} }
 
-package TAPx::Parser::Iterator::ARRAY;
 sub next {
     my $self = shift;
-    return $self->{array}->[$self->{idx}++];
+    my $fh   = $self->{fh};
+
+    local $/ = "\n";
+    if ( defined $self->{next} ) {
+        my $line = $self->{next};
+        if ( defined ( my $next = <$fh> ) ) {
+            chomp ( $self->{next} = $next );
+            $self->{first} = 0;
+        }
+        else {
+            $self->{last} = 1;
+            $self->{next} = undef;
+        }
+        return $line;
+    }
+    else {
+        $self->{first} = 1 unless $self->last;
+        local $^W;   # Don't want to chomp undef values
+        chomp( my $line = <$fh> );
+        chomp( $self->{next} = <$fh> );
+        return $line;
+    }
+}
+
+package TAPx::Parser::Iterator::ARRAY;
+
+@TAPx::Parser::Iterator::ARRAY::ISA = 'TAPx::Parser::Iterator';
+
+sub new {
+    my ( $class, $thing ) = @_;
+    chomp @$thing;
+    bless {
+        idx   => 0,
+        array => $thing,
+    }, $class;
+}
+
+sub first { 1 == $_[0]->{idx} }
+sub last  { @{ $_[0]->{array} } <= $_[0]->{idx} }
+
+sub next {
+    my $self = shift;
+    return $self->{array}->[ $self->{idx}++ ];
 }
 
 "Steve Peters, Master Of True Value Finding, was here.";

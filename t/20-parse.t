@@ -4,15 +4,14 @@ use strict;
 
 use lib 'lib';
 
-#use Test::More 'no_plan';
-
-use Test::More tests => 149;
+use Test::More tests => 200;
 use TAPx::Parser;
+use TAPx::Parser::Iterator;
 
 sub _get_results {
     my $parser = shift;
     my @results;
-    while ( my $result = $parser->next ) {
+    while ( defined( my $result = $parser->next ) ) {
         push @results => $result;
     }
     return @results;
@@ -302,3 +301,107 @@ is scalar $parser->todo_failed, 1,
   '... and it should report the number of tests which unexpectedly succeeded';
 is_deeply [ $parser->todo_failed ], [6],
   '... or *which* tests unexpectedly succeeded';
+
+#
+# Bug report from Torsten Schoenfeld
+# Makes sure parser can handle blank lines
+#
+
+$tap = <<'END_TAP';
+1..2
+ok 1 - input file opened
+
+
+ok 2 - read the rest of the file
+END_TAP
+
+my $aref = [ split /\n/ => $tap ];
+
+can_ok $PARSER, 'new';
+ok $parser = $PARSER->new( { stream => TAPx::Parser::Iterator->new($aref) } ),
+  '... and calling it should succeed';
+isa_ok $parser, $PARSER, '... and the object it returns';
+
+# results() is sane?
+
+ok @results = _get_results($parser), 'The parser should return results';
+is scalar @results, 5, '... and there should be one for each line';
+
+# check the test plan
+
+$result = shift @results;
+isa_ok $result, $PLAN;
+can_ok $result, 'type';
+is $result->type, 'plan', '... and it should report the correct type';
+ok $result->is_plan,   '... and it should identify itself as a plan';
+is $result->plan,      '1..2', '... and identify the plan';
+is $result->as_string, '1..2',
+  '... and have the correct string representation';
+is $result->raw, '1..2', '... and raw() should return the original line';
+
+# a normal, passing test
+
+$test = shift @results;
+isa_ok $test, $TEST;
+is $test->type, 'test', '... and it should report the correct type';
+ok $test->is_test, '... and it should identify itself as a test';
+is $test->ok,      'ok', '... and it should have the correct ok()';
+ok $test->passed,  '... and the correct boolean version of passed()';
+ok $test->actual_passed,
+  '... and the correct boolean version of actual_passed()';
+is $test->number, 1, '... and have the correct test number';
+is $test->description, '- input file opened',
+  '... and the correct description';
+ok !$test->directive,   '... and not have a directive';
+ok !$test->explanation, '... or a directive explanation';
+ok !$test->has_skip,    '... and it is not a SKIPped test';
+ok !$test->has_todo,    '... nor a TODO test';
+is $test->as_string, 'ok 1 - input file opened',
+  '... and its string representation should be correct';
+is $test->raw, 'ok 1 - input file opened',
+  '... and raw() should return the original line';
+
+# junk lines should be preserved
+
+$unknown = shift @results;
+isa_ok $unknown, $UNKNOWN;
+is $unknown->type, 'unknown', '... and it should report the correct type';
+ok $unknown->is_unknown, '... and it should identify itself as unknown';
+is $unknown->as_string,  '',
+  '... and its string representation should be returned verbatim';
+is $unknown->raw, '', '... and raw() should return the original line';
+
+# ... and the second empty line
+
+$unknown = shift @results;
+isa_ok $unknown, $UNKNOWN;
+is $unknown->type, 'unknown', '... and it should report the correct type';
+ok $unknown->is_unknown, '... and it should identify itself as unknown';
+is $unknown->as_string,  '',
+  '... and its string representation should be returned verbatim';
+is $unknown->raw, '', '... and raw() should return the original line';
+
+# a passing test
+
+$test = shift @results;
+isa_ok $test, $TEST;
+is $test->type, 'test', '... and it should report the correct type';
+ok $test->is_test, '... and it should identify itself as a test';
+is $test->ok,      'ok', '... and it should have the correct ok()';
+ok $test->passed,  '... and the correct boolean version of passed()';
+ok $test->actual_passed,
+  '... and the correct boolean version of actual_passed()';
+is $test->number, 2, '... and have the correct test number';
+is $test->description, '- read the rest of the file',
+  '... and the correct description';
+ok !$test->directive,   '... and not have a directive';
+ok !$test->explanation, '... or a directive explanation';
+ok !$test->has_skip,    '... and it is not a SKIPped test';
+ok !$test->has_todo,    '... nor a TODO test';
+is $test->as_string, 'ok 2 - read the rest of the file',
+  '... and its string representation should be correct';
+is $test->raw, 'ok 2 - read the rest of the file',
+  '... and raw() should return the original line';
+
+is scalar $parser->passed, 2,
+  'Empty junk lines should not affect the correct number of tests passed';

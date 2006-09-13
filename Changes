@@ -1,5 +1,17 @@
 Revision history for TAP-Parser
 
+0.22     13 September 2006
+         - Removed buggy support for multi-line chunks from streams.  If your
+           streams or iterators return anything but single lines, this is a
+           bug.
+         - Fixed bug whereby blank lines in TAP would confuse the parser.
+           Reported by Torsten Schoenfeld.
+         - Added first() and last() methods to the iterator.
+         - TAPx::Parser::Source::Perl now has a 'switches' method which allows
+           switches to be passed to the perl executable running the test file.
+           This allows tprove to accept a '-l' argument to force lib/ to be
+           included in Perl's @INC.
+
 0.21     8 September 2006
          - Included experimental GTK interface written by Torsten Schoenfeld.
          - Fixed bad docs in examples/tprove_color
