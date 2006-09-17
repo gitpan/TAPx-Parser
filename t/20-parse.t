@@ -1,5 +1,5 @@
-#!/usr/bin/perl -T
-use warnings;
+#!/usr/bin/perl -wT
+
 use strict;
 
 use lib 'lib';
@@ -201,29 +201,30 @@ is $test->raw, 'ok 5 # skip we have no description',
 # a failing test, which also happens to have a directive
 # ok 6 - you shall not pass! # TODO should have failed
 
-$failed = shift @results;
-isa_ok $failed, $TEST;
-can_ok $failed, 'todo_failed';
-is $failed->type, 'test', 'TODO tests should parse correctly';
-ok $failed->is_test, '... and it should identify itself as a test';
-is $failed->ok, 'ok', '... and it should have the correct ok()';
-ok !$failed->passed, '... and TODO tests should reverse the sense of passing';
-ok $failed->actual_passed,
+my $bonus = shift @results;
+isa_ok $bonus, $TEST;
+can_ok $bonus, 'todo_failed';
+is $bonus->type, 'test', 'TODO tests should parse correctly';
+ok $bonus->is_test, '... and it should identify itself as a test';
+is $bonus->ok, 'ok', '... and it should have the correct ok()';
+ok $bonus->passed,
+  '... and TODO tests should not reverse the sense of passing';
+ok $bonus->actual_passed,
   '... and the correct boolean version of actual_passed ()';
-is $failed->number, 6, '... and have the correct failed number';
-is $failed->description, '- you shall not pass!',
+is $bonus->number, 6, '... and have the correct failed number';
+is $bonus->description, '- you shall not pass!',
   '... and the correct description';
-is $failed->directive, 'TODO', '... and should have the correct directive';
-is $failed->explanation, 'should have failed',
+is $bonus->directive, 'TODO', '... and should have the correct directive';
+is $bonus->explanation, 'should have failed',
   '... and the correct directive explanation';
-ok !$failed->has_skip, '... and it is not a SKIPped failed';
-ok $failed->has_todo,  '... but it is a TODO succeeded';
-is $failed->as_string, 'ok 6 - you shall not pass! # TODO should have failed',
+ok !$bonus->has_skip, '... and it is not a SKIPped failed';
+ok $bonus->has_todo,  '... but it is a TODO succeeded';
+is $bonus->as_string, 'ok 6 - you shall not pass! # TODO should have failed',
   '... and its string representation should be correct';
-is $failed->raw, 'ok 6 - you shall not pass! # TODO should have failed',
+is $bonus->raw, 'ok 6 - you shall not pass! # TODO should have failed',
   '... and raw() should return the original line';
-ok $failed->todo_failed,
-  '... todo_failed() should pass for TODO tests which unexpectedly succeed';
+ok $bonus->todo_failed,
+  '... todo_bonus() should pass for TODO tests which unexpectedly succeed';
 
 # not ok 7 - Gandalf wins.  Game over.  # TODO 'bout time!
 
@@ -255,15 +256,14 @@ ok !$passed->todo_failed,
 # test parse results
 
 can_ok $parser, 'passed';
-is $parser->passed, 5,
+is $parser->passed, 6,
   '... and we should have the correct number of passed tests';
-is_deeply [ $parser->passed ], [ 1, 2, 3, 5, 7 ],
+is_deeply [ $parser->passed ], [ 1, 2, 3, 5, 6, 7 ],
   '... and get a list of the passed tests';
 
 can_ok $parser, 'failed';
-is $parser->failed, 2, '... and the correct number of failed tests';
-is_deeply [ $parser->failed ], [ 4, 6 ],
-  '... and get a list of the failed tests';
+is $parser->failed, 1, '... and the correct number of failed tests';
+is_deeply [ $parser->failed ], [4], '... and get a list of the failed tests';
 
 can_ok $parser, 'actual_passed';
 is $parser->actual_passed, 4,

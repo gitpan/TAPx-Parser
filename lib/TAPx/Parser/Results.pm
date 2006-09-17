@@ -1,7 +1,6 @@
 package TAPx::Parser::Results;
 
 use strict;
-use warnings;
 use vars qw($VERSION);
 
 use TAPx::Parser::Results::Plan;
@@ -26,11 +25,11 @@ TAPx::Parser::Results - TAPx::Parser output
 
 =head1 VERSION
 
-Version 0.22
+Version 0.30
 
 =cut
 
-$VERSION = '0.22';
+$VERSION = '0.30';
 
 =head2 DESCRIPTION
 
@@ -156,5 +155,18 @@ up.  If you need the original text for the token, see the C<raw> method.
 =cut
 
 sub as_string { shift->{raw} }
+
+##############################################################################
+
+=head3 passed
+
+  if ( $result->passed ) { ... }
+
+Reports whether or not a given result has passed.  Anything which is B<not> a
+test result returns true.  This is merely provided as a convenient shortcut.
+
+=cut
+
+sub passed { 1 };
 
 1;

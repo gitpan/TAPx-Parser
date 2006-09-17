@@ -1,8 +1,11 @@
 package TAPx::Parser::Results::Unknown;
 
 use strict;
-use warnings;
-use base 'TAPx::Parser::Results';
+
+use vars qw($VERSION @ISA);
+use TAPx::Parser::Results;
+@ISA = 'TAPx::Parser::Results';
+
 use vars qw($VERSION);
 
 =head1 NAME
@@ -11,11 +14,11 @@ TAPx::Parser::Results::Unknown - Unknown result token.
 
 =head1 VERSION
 
-Version 0.22
+Version 0.30
 
 =cut
 
-$VERSION = '0.22';
+$VERSION = '0.30';
 
 =head1 DESCRIPTION
 

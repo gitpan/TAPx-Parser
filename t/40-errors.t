@@ -1,11 +1,10 @@
-#!/usr/bin/perl -T
-use warnings;
+#!/usr/bin/perl -wT
+
 use strict;
 
 use lib 'lib';
-#use Test::More 'no_plan';
 
-use Test::More tests => 18;
+use Test::More tests => 21;
 use TAPx::Parser;
 
 my $plan_line = 'TAPx::Parser::Results::Plan';
@@ -20,14 +19,31 @@ ok 1 - input file opened
 not ok 2 - first line of the input valid # todo some data
 ok 3 - read the rest of the file
 1..3
-# yeah, yeah, I know.
+# comments are allowed after an ending plan
 END_TAP
 
 can_ok $parser, 'parse_errors';
-is scalar $parser->parse_errors, 1, '... and we should have one parse error';
+ok !$parser->parse_errors,
+  '... comments should be allowed after a terminating plan';
+
+$parser->_parse(<<'END_TAP');
+ok 1 - input file opened
+not ok 2 - first line of the input valid # todo some data
+ok 3 - read the rest of the file
+1..3
+# yeah, yeah, I know.
+ok
+END_TAP
+
+can_ok $parser, 'parse_errors';
+is scalar $parser->parse_errors, 2, '... and we should have two parse errors';
 is [ $parser->parse_errors ]->[0],
   'Plan (1..3) must be at the beginning or end of the TAP output',
   '... telling us that our plan was misplaced';
+is [ $parser->parse_errors ]->[1],
+  'Bad plan.  You planned 3 tests but ran 4.',
+  '... and telling us we ran the wrong number of tests.';
+
 
 $parser->_parse(<<'END_TAP');
 ok 1 - input file opened
@@ -127,10 +143,14 @@ not ok 2 - first line of the input valid # todo some data
 ok 3 read the rest of the file
 END_TAP
 
-ok !$parser->parse_errors,
-  'Having a planned and actual tests differ is not a parse error';
-ok ! $parser->good_plan, '... but good_plan() should return false';
+is $parser->parse_errors, 1,
+  'Having the wrong number of planned tests is a parse error';
+is + ( $parser->parse_errors )[0],
+  'Bad plan.  You planned 2 tests but ran 3.',
+  '... with a correct error message';
 
+# XXX internals:  plan will not set to true if defined
+$parser->good_plan(undef);
 $parser->_parse(<<'END_TAP');
 ok 1 - input file opened
 1..1

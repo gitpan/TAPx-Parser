@@ -1,7 +1,6 @@
 package TAPx::Parser::Source::Perl;
 
 use strict;
-use warnings;
 use vars qw($VERSION);
 use Symbol 'gensym';
 
@@ -17,11 +16,11 @@ TAPx::Parser::Source::Perl - Stream Perl output
 
 =head1 VERSION
 
-Version 0.22
+Version 0.30
 
 =cut
 
-$VERSION = '0.22';
+$VERSION = '0.30';
 
 =head1 DESCRIPTION
 
@@ -129,6 +128,7 @@ sub get_stream {
         return TAPx::Parser::Iterator->new($sym);
     }
     else {
+        $self->exit($? >> 8);
         $self->error("Could not execute ($command): $!");
         return;
     }
@@ -150,6 +150,24 @@ sub error {
     my $self = shift;
     return $self->{error} unless @_;
     $self->{error} = shift;
+    return $self;
+}
+
+##############################################################################
+
+=head3 exit
+
+  my $exit = $self->exit;
+
+Returns the exit status of the process I<if and only if> an error occurs in
+opening the file.
+
+=cut
+
+sub exit {
+    my $self = shift;
+    return $self->{exit} unless @_;
+    $self->{exit} = shift;
     return $self;
 }
 

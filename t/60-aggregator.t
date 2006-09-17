@@ -1,5 +1,5 @@
-#!/usr/bin/perl 
-use warnings;
+#!/usr/bin/perl -wT
+
 use strict;
 
 use lib 'lib';
@@ -65,13 +65,13 @@ is_deeply [ $agg->parsers(qw(tap2 tap1)) ], [ $parser2, $parser1 ],
 # test aggregate results
 
 can_ok $agg, 'passed';
-is $agg->passed, 9,
+is $agg->passed, 10,
   '... and we should have the correct number of passed tests';
 is_deeply [ $agg->passed ], [qw(tap1 tap2)],
   '... and be able to get their descriptions';
 
 can_ok $agg, 'failed';
-is $agg->failed, 3,
+is $agg->failed, 2,
   '... and we should have the correct number of failed tests';
 is_deeply [ $agg->failed ], [qw(tap1 tap2)],
   '... and be able to get their descriptions';

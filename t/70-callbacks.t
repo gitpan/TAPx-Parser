@@ -1,5 +1,5 @@
-#!/usr/bin/perl 
-use warnings;
+#!/usr/bin/perl -wT
+
 use strict;
 
 use lib 'lib';

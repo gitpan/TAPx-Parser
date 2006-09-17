@@ -1,20 +1,22 @@
 TODO:
 
-     - The 'result' objects are currently blessing hashrefs.  This is bad.
-       Instead, they should have proper getter/setters to provide future
-       support for subclassing.
-     - Simplify constructor.  Let them pass a 'source' key which points to an
-       aref, glob, or string.
-     - comments after plan are OK?
-     - Horrible idea:  have Mac's voice synthesis tell you when tests fail!
-     - Have tprove duplicate all of the functionality of prove.
-     - Allow description transformations to be applied.
-     - Figure out the namespace.
+     - All boolean methods must start with is_ (Aristotle and Paul Johnson)
+     - Run it against Perl's test suite (first prove, then tprove).
+     - Run Perl::MinimumVersion over it
+     - Comments and junk are also allowed *before* the plan.  Sigh.
      - Currently the error messages are not quite as helpful as they could be.
        They could use line and test numbers.
      - Identify junk lines by number.
+     - The 'result' objects are currently blessing hashrefs.  This is bad.
+       Instead, they should have proper getter/setters to provide future
+       support for subclassing.
+     - Horrible idea:  have Mac's voice synthesis tell you when tests fail :)
+     - Have tprove duplicate all of the functionality of prove.
+     - Allow description transformations to be applied.
+     - Figure out the namespace.
 
 QUESTIONS:
 
      - skipped lines should always be OK?  This should be a parse error.
+       According to Schwern, this behavior is undefined.
      - VMS 'not' and 'ok' on separate lines?

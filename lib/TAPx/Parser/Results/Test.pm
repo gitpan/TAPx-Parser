@@ -1,8 +1,11 @@
 package TAPx::Parser::Results::Test;
 
 use strict;
-use warnings;
-use base 'TAPx::Parser::Results';
+
+use vars qw($VERSION @ISA);
+use TAPx::Parser::Results;
+@ISA = 'TAPx::Parser::Results';
+
 use vars qw($VERSION);
 
 =head1 NAME
@@ -11,11 +14,11 @@ TAPx::Parser::Results::Test - Test result token.
 
 =head1 VERSION
 
-Version 0.22
+Version 0.30
 
 =cut
 
-$VERSION = '0.22';
+$VERSION = '0.30';
 
 =head1 DESCRIPTION
 
@@ -116,7 +119,7 @@ sub explanation { shift->{explanation} }
   if ( $result->passed ) { ... }
 
 Returns a boolean value indicating whether or not the test passed.  Remember
-that for TODO tests, the sense of passing and failing is reversed.
+that for TODO tests, the test always passes.
 
 =cut
 
@@ -124,7 +127,7 @@ sub passed {
     my $self = shift;
 
     # TODO directives reverse the sense of a test.
-    return $self->has_todo ? $self->ok =~ /not/ : $self->ok !~ /not/;
+    return $self->has_todo ? 1 : $self->ok !~ /not/;
 }
 
 ##############################################################################

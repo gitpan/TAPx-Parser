@@ -1,10 +1,9 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 
 eval 'exec /usr/bin/perl -w -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
 
 use strict;
-use warnings;
 
 sub _print;
 use Getopt::Long;
@@ -65,18 +64,9 @@ else {
 }
 
 my $aggregate = TAPx::Parser::Aggregator->new;
-my $source    = TAPx::Parser::Source::Perl->new;
-$source->switches('-Ilib') if $LIB;
 foreach my $test (@tests) {
-    if ( my $stream = $source->filename($test)->get_stream ) {
-        my $parser = analyze_test( $test, $stream );
-        $aggregate->add( $test, $parser );
-    }
-    else {
-        my $error = $source->error;
-        warn "Could not run ($test): $error";
-        next;
-    }
+    my $parser = analyze_test( $test );
+    $aggregate->add( $test, $parser );
 }
 
 my ( $total, $passed, $failed, $errors ) = (
@@ -94,9 +84,11 @@ Errors:     $errors
 END_SUMMARY
 
 sub analyze_test {
-    my ( $test, $stream ) = @_;
+    my ( $test ) = @_;
 
-    my $parser = TAPx::Parser->new( { stream => $stream } );
+    my %args = ( source => $test );
+    $args{switches} = '-Ilib' if $LIB;
+    my $parser = TAPx::Parser->new( \%args );
     print "$test......";
     while ( defined (my $result = $parser->next) ) {
         _print $result->as_string, $/;
@@ -106,6 +98,7 @@ sub analyze_test {
     }
     else {
         print "not ok.\n";
+        local $" = "\n    ";
         if ( $parser->failed ) {
              print "Failed: @{[$parser->failed]}\n";
         }

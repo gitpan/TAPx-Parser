@@ -1,9 +1,10 @@
 package TAPx::Parser::Results::Plan;
 
 use strict;
-use warnings;
-use base 'TAPx::Parser::Results';
-use vars qw($VERSION);
+
+use vars qw($VERSION @ISA);
+use TAPx::Parser::Results;
+@ISA = 'TAPx::Parser::Results';
 
 =head1 NAME
 
@@ -11,11 +12,11 @@ TAPx::Parser::Results::Plan - Plan result token.
 
 =head1 VERSION
 
-Version 0.22
+Version 0.30
 
 =cut
 
-$VERSION = '0.22';
+$VERSION = '0.30';
 
 =head1 DESCRIPTION
 
@@ -56,7 +57,7 @@ This is merely a synonym for C<as_string>.
 
 =cut
 
-sub plan { shift->{raw} }
+sub plan { '1..' . shift->{tests_planned} }
 
 ##############################################################################
 
@@ -70,5 +71,32 @@ cause this method to return '17'.
 =cut
 
 sub tests_planned { shift->{tests_planned} }
+
+##############################################################################
+
+=head3 C<directive>
+
+ my $directive = $plan->directive; 
+
+If a SKIP directive is included with the plan, this method will return it.
+
+ 1..0 # SKIP: why bother?
+
+=cut
+
+sub directive { shift->{directive} }
+
+##############################################################################
+
+=head3 C<explanation>
+
+ my $explanation = $plan->explanation;
+
+If a SKIP directive was included with the plan, this method will return the
+explanation, if any.
+
+=cut
+
+sub explanation { shift->{explanation} }
 
 1;

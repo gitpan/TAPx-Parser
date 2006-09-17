@@ -1,4 +1,4 @@
-#!/usr/bin/perl -T
+#!/usr/bin/perl -wT
 
 use Test::More tests => 24;
 

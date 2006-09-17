@@ -1,7 +1,6 @@
 package TAPx::Parser::Grammar;
 
 use strict;
-use warnings;
 use vars qw($VERSION);
 
 =head1 NAME
@@ -10,11 +9,11 @@ TAPx::Parser::Grammar - A grammar for the original TAP version.
 
 =head1 VERSION
 
-Version 0.22
+Version 0.30
 
 =cut
 
-$VERSION = '0.22';
+$VERSION = '0.30';
 
 =head1 DESCRIPTION
 
@@ -26,6 +25,8 @@ Do not attempt to use this class directly.  It won't make sense.  It's mainly
 here to ensure that we will be able to have pluggable grammars when TAP is
 expanded at some future date (plus, this stuff was really cluttering the
 parser).
+
+If you're looking for an EBNF grammar, see L<TAPx::Parser>.
 
 =cut
 
@@ -49,31 +50,37 @@ sub new {
 
 # XXX the 'not' and 'ok' might be on separate lines in VMS ...
 
-my $ok          = qr/(?:not )?ok\b/;
-my $num         = qr/\d+/;
-my $description = qr/[^\d#](?:(?:\\\\)*\\#|[^#])*/;    # escaped # is allowed
-my $directive   = qr/
-                    (?i:
-                        \#\s+
-                        (TODO|SKIP)\s*
-                        (.*)
-                    )?
-                    /x;
-
-#
-# Ooh, bad Ovid, no biscuit.
-#
-# Each token, when generated, should have a 'type' key.  That will simplify
-# the result class generation.  I'll fix this later.
-#
+my $ok           = qr/(?:not )?ok\b/;
+my $num          = qr/\d+/;
+my $todo_or_skip = qr/\s*(?i:TODO|SKIP)\b/;
+my $description  =
+qr/(?:#(?!$todo_or_skip)|[^\d#])(?:#(?!$todo_or_skip)|[^#])*/;
+my $directive    = qr/
+                     (?i:
+                       \#\s+
+                       (TODO|SKIP)\b
+                       (.*)
+                     )?
+                   /x;
 
 my %token_for = (
     plan => {
-        syntax  => qr/^1\.\.(\d+)/,
+        syntax  => qr/^1\.\.(\d+)(?:\s*#\s*SKIP\b(.*))?/i,
         handler => sub {
             my ( $self, $line ) = @_;
             my $tests_planned = $1;
-            return $self->_make_plan_token( $line, $tests_planned );
+            my $explanation   = $2;
+            my $skip          =
+              ( 0 == $tests_planned || defined $explanation )
+              ? 'SKIP'
+              : '';
+            $explanation = '' unless defined $explanation;
+            return $self->_make_plan_token(
+                $line,
+                $tests_planned,
+                $skip,
+                $explanation
+            );
         },
     },
     test => {
@@ -181,11 +188,20 @@ sub handler_for {
 }
 
 sub _make_plan_token {
-    my ( $self, $line, $tests_planned ) = @_;
+    my ( $self, $line, $tests_planned, $skip, $explanation ) = @_;
+    if ( 0 == $tests_planned ) {
+        $skip ||= 'SKIP';
+    }
+    if ( $skip && 0 != $tests_planned ) {
+        warn
+          "Specified SKIP directive in plan but more than 0 tests ($line)\n";
+    }
     return {
         type          => 'plan',
         raw           => $line,
         tests_planned => $tests_planned,
+        directive     => $skip,
+        explanation   => $explanation,
     };
 }
 

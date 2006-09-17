@@ -1,5 +1,5 @@
-#!/usr/bin/perl
-use warnings;
+#!/usr/bin/perl -wT
+
 use strict;
 
 use Test::More tests => 14;

@@ -1,11 +1,13 @@
 package TAPx::Parser;
 
-use warnings;
 use strict;
 use vars qw($VERSION);
 
 use TAPx::Parser::Grammar;
 use TAPx::Parser::Results;
+use TAPx::Parser::Source::Perl;
+use TAPx::Parser::Iterator;
+use TAPx::Parser::Streamed;
 
 =head1 NAME
 
@@ -13,11 +15,11 @@ TAPx::Parser - Parse TAP output
 
 =head1 VERSION
 
-Version 0.22
+Version 0.30
 
 =cut
 
-$VERSION = '0.22';
+$VERSION = '0.30';
 
 BEGIN {
     foreach my $method (
@@ -28,10 +30,14 @@ BEGIN {
         _stream
         _stream_started
         _grammar
+        _end_plan_error
+        _plan_error_found
+        exit
         good_plan
         plan
         tests_planned
         tests_run
+        wait
         >
       )
     {
@@ -51,9 +57,7 @@ BEGIN {
 
     use TAPx::Parser;
 
-    my $parser = TAPx::Parser->new( { tap    => $string_o_tap } );
-    # or
-    my $parser = TAPx::Parser->new( { stream => $stream_o_tap } );
+    my $parser = TAPx::Parser->new( { source => $source } );
     
     while ( my $result = $parser->next ) {
         print $result->as_string;
@@ -82,6 +86,27 @@ The arguments should be a hashref with I<one> of the following keys:
 
 =over 4
 
+=item * C<source>
+
+This is the preferred method of passing arguments to the constructor.  To
+determine how to handle the source, the following steps are taken.
+
+If the source contains a newline, it's assumed to be a string of raw TAP
+output.
+
+If the source is a reference, it's assumed to be something to pass to the
+C<TAPx::Parser::Iterator> constructor.  This is used internally and you should
+not use it.
+
+Otherwise, the parser does a C<-e> check to see if the source exists.  If so,
+it attempts to execute the source and read the output as a stream.  This is by
+far the preferred method of using the parser.
+
+ foreach my $file ( @test_files ) {
+     my $parser = TAPx::Parser->new( { source => $file } );
+     # do stuff with the parser
+ }
+
 =item * C<tap>
 
 The value should be the complete TAP output.
@@ -94,9 +119,14 @@ C<undef>.
 
 =back
 
-Optionally, a "callback" key may be added.  If present, each callback
-corresponding to a given result type will be called with the result as the
-argument if the C<run> method is used:
+The following keys are optional.
+
+=over 4
+
+=item * C<callback>
+
+If present, each callback corresponding to a given result type will be called
+with the result as the argument if the C<run> method is used:
 
  my %callbacks = (
      test    => \&test_callback,
@@ -118,6 +148,18 @@ argument if the C<run> method is used:
      $parser->run;
      $aggregator->add( $file, $parser );
  }
+
+=item * C<switches>
+
+If using a Perl file as a source, optional switches may be passed which will
+be used when invoking the perl executable.
+
+ my $parser = TAPx::Parser->new( {
+     source   => $test_file,
+     switches => '-Ilib',
+ } );
+
+=back
 
 =cut
 
@@ -165,9 +207,9 @@ as the argument.
 
 sub run {
     my $self = shift;
-    while ( defined (my $result = $self->next) ) {
+    while ( defined( my $result = $self->next ) ) {
         my $code;
-        if ( $code = $self->_callback_for($result->type) ) {
+        if ( $code = $self->_callback_for( $result->type ) ) {
             $code->($result);
         }
         elsif ( $code = $self->_callback_for('ELSE') ) {
@@ -201,21 +243,52 @@ sub run {
         parse_errors  => [],    # perfect TAP should have none
     );
 
+    # XXX This is in need of some serious refactoring :(
     sub _initialize {
         my ( $self, $arg_for ) = @_;
 
         $arg_for ||= {};
-        my $stream = $arg_for->{stream};
-        my $tap    = $arg_for->{tap};
-        if ( $stream && $tap ) {
-            $self->_croak("You may not have both a stream and a tap parser");
+        my $stream   = delete $arg_for->{stream};
+        my $tap      = delete $arg_for->{tap};
+        my $source   = delete $arg_for->{source};
+        if ( 1 < grep {defined} $stream, $tap, $source ) {
+            $self->_croak(
+                "You may only choose one of 'stream', 'tap', or'source'" );
         }
         if ($stream) {
-            require TAPx::Parser::Streamed;
+            $arg_for->{stream} = $stream;
+            return TAPx::Parser::Streamed->new($arg_for);
+        }
+        elsif ($source) {
+            if ( $source =~ /\n/ ) {
+                $arg_for->{tap} = $tap;
+                return TAPx::Parser->new($arg_for);
+            }
+            elsif ( ref $source ) {
+                $arg_for->{stream} = TAPx::Parser::Iterator->new($source);
+            }
+            elsif ( -e $source ) {
+
+                # eventually we'll try to open this up to other sources
+                my $perl = TAPx::Parser::Source::Perl->new;
+                $perl->switches($arg_for->{switches}) if $arg_for->{switches};
+                my $stream = $perl->filename($source)->get_stream;
+                if ( defined $stream->exit ) {
+                    $self->exit( $stream->exit );
+                }
+                if ( defined $stream->wait ) {
+                    $self->wait( $stream->wait );
+                }
+                $arg_for->{stream} = $stream;
+            }
+            else {
+                $self->_croak("Cannot determine source for $source");
+            }
             return TAPx::Parser::Streamed->new($arg_for);
         }
         $self->_grammar( TAPx::Parser::Grammar->new($self) )
           ;    # eventually pass a version
+        #@{$self}{keys %initialize} = values %initialize;
         while ( my ( $k, $v ) = each %initialize ) {
             $self->{$k} = 'ARRAY' eq ref $v ? [] : $v;
         }
@@ -223,15 +296,13 @@ sub run {
             $self->_tap($tap);
             $self->_parse;
         }
-        $arg_for->{callbacks} ||= {};
-        $self->{code_for} = $arg_for->{callbacks};
-        $self->good_plan(1);    # will be reset at the end of parsing, if bad
+        $self->{code_for} = $arg_for->{callbacks} || {};
         return $self;
     }
 }
 
 sub _callback_for {
-    my ($self, $callback) = @_;
+    my ( $self, $callback ) = @_;
     return $self->{code_for}{$callback};
 }
 
@@ -367,6 +438,20 @@ Indicates whether or not this is bailout line.
 
 Indicates whether or not the current line could be parsed.
 
+=head3 passed
+
+  if ( $result->passed ) { ... }
+
+Reports whether or not a given result has passed.  Anything which is B<not> a
+test result returns true.  This is merely provided as a convenient shortcut
+which allows you to do this:
+
+ my $parser = TAPx::Parser->new( { source => $source } );
+ while ( my $result = $parser->next ) {
+     # only print failing results
+     print $result->as_string unless $result->passed;
+ }
+
 =head2 C<plan> methods
 
  if ( $result->is_plan ) { ... }
@@ -388,6 +473,21 @@ This is merely a synonym for C<as_string>.
 
 Returns the number of tests planned.  For example, a plan of C<1..17> will
 cause this method to return '17'.
+
+=head3 C<directive>
+
+ my $directive = $result->directive; 
+
+If a SKIP directive is included with the plan, this method will return it.
+
+ 1..0 # SKIP: why bother?
+
+=head3 C<explanation>
+
+ my $explanation = $result->explanation;
+
+If a SKIP directive was included with the plan, this method will return the
+explanation, if any.
 
 =head2 C<commment> methods
 
@@ -500,6 +600,9 @@ directive.
 Returns a boolean value indicating whether or not this test had a TODO
 directive.
 
+Note that TODO tests I<always> pass.  If you need to know whether or not
+they really passed, check the C<actual_passed> method.
+
 =head1 TOTAL RESULTS
 
 After parsing the TAP, there are many methods available to let you dig through
@@ -549,6 +652,11 @@ regardless of whether or not a TODO directive was found.
 =cut
 
 sub actual_passed { @{ shift->{actual_passed} } }
+*actual_ok = \&actual_passed;
+
+=head3 C<actual_ok>
+
+This method is a synonym for C<actual_passed>.
 
 =head3 C<actual_failed>
 
@@ -627,7 +735,21 @@ plan of '1..17' will mean that 17 tests were planned.
 Returns the number of tests which actually were run.  Hopefully this will
 match the number of C<< $parser->tests_planned >>.
 
-=cut
+
+=head3 exit
+
+  $parser->exit;
+
+Once the parser is done, this will return the exit status.  If the parser ran
+an executable, it returns the exit status of the executable.
+
+=head3 wait
+
+  $parser->wait;
+
+Once the parser is done, this will return the wait status.  If the parser ran
+an executable, it returns the wait status of the executable.  Otherwise, this
+mererely returns the C<exit> status.
 
 =head3 C<parse_errors>
 
@@ -697,25 +819,29 @@ sub _add_error {
     return $self;
 }
 
-sub _aggregate_results {
-    my ( $self, $test ) = @_;
+{
+    my %track = (
+        has_todo      => 'todo',
+        has_skip      => 'skipped',
+        todo_failed   => 'todo_failed',
+        passed        => 'passed',
+        actual_passed => 'actual_passed',
+    );
 
-    my ( $actual, $status );
-    if ( $test->actual_passed ) {
-        $actual = 'actual_passed';
-        $status = 'TODO' eq $test->directive ? 'failed' : 'passed';
+    sub _aggregate_results {
+        my ( $self, $test ) = @_;
+
+        my ( $actual, $status );
+        my $num = $test->number;
+
+        while ( my ( $method, $key ) = each %track ) {
+            push @{ $self->{$key} } => $num if $test->$method;
+        }
+
+        push @{ $self->{actual_failed} } => $num if !$test->actual_passed;
+        push @{ $self->{failed} }        => $num if !$test->passed;
+        return $self;
     }
-    else {
-        $actual = 'actual_failed';
-        $status = 'TODO' eq $test->directive ? 'passed' : 'failed';
-    }
-    my $num = $test->number;
-    push @{ $self->{todo} }        => $num if $test->has_todo;
-    push @{ $self->{skipped} }     => $num if $test->has_skip;
-    push @{ $self->{todo_failed} } => $num if $test->todo_failed;
-    push @{ $self->{$actual} }     => $num;
-    push @{ $self->{$status} }     => $num;
-    return $self;
 }
 
 {
@@ -725,6 +851,7 @@ sub _aggregate_results {
             local *__ANON__ = '__ANON__test_validation';
             $self->tests_run( $self->tests_run + 1 );
 
+            $self->_check_ending_plan;
             if ( $test->number ) {
                 if ( $test->number != $self->tests_run ) {
                     my $number = $test->number;
@@ -743,22 +870,43 @@ sub _aggregate_results {
             my ( $self, $plan ) = @_;
             local *__ANON__ = '__ANON__plan_validation';
             $self->tests_planned( $plan->tests_planned );
-            $self->plan( $plan->as_string );
+            $self->plan( $plan->plan );
             $self->_plan_found( $self->_plan_found + 1 );
-            unless ( $self->_start_tap || $self->_end_tap ) {
-                my $line = $plan->as_string;
-                $self->_add_error(
-                    "Plan ($line) must be at the beginning or end of the TAP output"
-                );
+            if ( !$self->_start_tap && !$self->_end_tap ) {
+                if ( !$self->_end_plan_error ) {
+                    my $line = $plan->as_string;
+                    $self->_end_plan_error(
+                        "Plan ($line) must be at the beginning or end of the TAP output"
+                    );
+                }
             }
         },
-        bailout => sub { },
+        bailout => sub {
+            my ( $self, $bailout ) = @_;
+            local *__ANON__ = '__ANON__bailout_validation';
+            $self->_check_ending_plan;
+        },
         unknown => sub { },
         comment => sub { },
     );
 
+    sub _check_ending_plan {
+        my $self = shift;
+        if ( !$self->_plan_error_found
+            && ( my $error = $self->_end_plan_error ) )
+        {
+
+            # test output found after ending plan
+            $self->_add_error($error);
+            $self->_plan_error_found(1);
+            $self->good_plan(0);
+        }
+        return $self;
+    }
+
     sub _validate {
         my ( $self, $token ) = @_;
+        return unless $token;    # XXX edge case for 'no output'
         my $type     = $token->type;
         my $validate = $validation_for{$type};
         unless ($validate) {
@@ -798,8 +946,16 @@ sub _finish {
     elsif ( $self->_plan_found > 1 ) {
         $self->_add_error("More than one plan found in TAP output");
     }
-    if ( $self->tests_run != ($self->tests_planned || 0) ) {
+    else {
+        $self->good_plan(1) unless defined $self->good_plan;
+    }
+    if ( $self->tests_run != ( $self->tests_planned || 0 ) ) {
         $self->good_plan(0);
+        if ( defined( my $planned = $self->tests_planned ) ) {
+            my $ran = $self->tests_run;
+            $self->_add_error(
+                "Bad plan.  You planned $planned tests but ran $ran.");
+        }
     }
     if ( $self->tests_run != ( $self->passed + $self->failed ) ) {
 
@@ -811,6 +967,8 @@ sub _finish {
             "Panic: planned test count ($actual) did not equal sum of passed ($passed) and failed ($failed) tests!"
         );
     }
+
+    $self->good_plan(0) unless defined $self->good_plan;
     return $self;
 }
 
@@ -927,11 +1085,17 @@ See C<examples/tprove_color> for an example of this.
 
 =head1 TAP GRAMMAR
 
+B<NOTE:>  This grammar is slightly out of date.  There's still some discussion
+about it and a new one will be provided when we have things better defined.
+
 The C<TAPx::Parser> does not use a formal grammar because TAP is essentially a
 stream-based protocol.  In fact, it's quite legal to have an infinite stream.
 For the same reason that we don't apply regexes to streams, we're not using a
-formal grammar here.  Instead, we parse the TAP in lines (referred to
-internally as "chunks").
+formal grammar here.  Instead, we parse the TAP in lines.
+
+For purposes for forward compatability, any result which does not match the
+following grammar is currently referred to as
+L<TAPx::Parser::Result::Unknown>.  It is I<not> a parse error.
 
 A formal grammar would look similar to the following:
 
@@ -950,39 +1114,91 @@ A formal grammar would look similar to the following:
  (* POSIX character classes and other terminals *)
  
  digit              ::= [:digit:]
- character          ::= [:print:]
+ character          ::= ([:print:] - "\n")
  positiveInteger    ::= ( digit - '0' ) {digit}
  nonNegativeInteger ::= digit {digit}
  
- (* And on to the real grammar ... *)
  
- (* "plan => $num" versus "no_plan" *)
+ tap         ::= plan lines | lines plan {comment}
  
- tap    ::= plan tests | tests plan 
+ plan        ::= '1..' nonNegativeInteger "\n"
  
- plan   ::= '1..' nonNegativeInteger "\n"
+ lines       ::= line {line}
+
+ line        ::= (comment | test | junk ) "\n"
  
- (* Gotta have at least one test *)
+ tests       ::= test {test}
  
- tests  ::= test {test}
+ test        ::= status positiveInteger? description? directive?
  
- (* 
-     The "positiveInteger" is the test number and should 
-     always be one greater than the previous test number.
- *)
-    
- test   ::= status (positiveInteger description)? directive? "\n"
+ status      ::= 'not '? 'ok '
  
- status ::= 'not '? 'ok '
- 
- (*
-     Description must not begin with a digit or contain a 
-     hash mark.
- *)
- 
- description ::= (character - (digit '#')) {character - '#'}
+ description ::= (character - (digit | '#')) {character - '#'}
  
  directive   ::= '#' ( 'TODO' | 'SKIP' ) ' ' {character}
+
+ comment     ::= '#' {character}
+
+ junk        ::= character {character}
+
+=head1 BACKWARDS COMPATABILITY
+
+The Perl-QA list attempted to ensure backwards compatability with
+L<Test::Harnes>.  However, there are some minor differences.
+
+=head2 Differences
+
+=over 4
+
+=item * TODO plans
+
+A little-known feature of C<Test::Harness> is that it supported TODO lists in
+the plan:
+
+ 1..2 todo 2
+ ok 1 - We have liftoff
+ not ok 2 - Anti-gravity device activated
+
+Under C<Test::Harness>, test number 2 would I<pass> because it was listed as a
+TODO test on the plan line.  However, we are not aware of anyone actually
+using this feature and hard-coding test numbers is discouraged because it's
+very easy to add a test and break the test number sequence.  This makes test
+suites very fragile.  Instead, the following should be used:
+
+ 1..2
+ ok 1 - We have liftoff
+ not ok 2 - Anti-gravity device activated # TODO
+
+
+=item * Unexpectedly succeeding TODO tests now fail
+
+At least as late as C<Test::Harness> 2.63, the following would be reported as
+a I<passing> test:
+
+ 1..2
+ ok 1 - We have liftoff
+ ok 2 - Anti-gravity device activated # TODO
+
+However, this meant that TODOs were innappropriately sprinkled through the
+code and C<Test::Harness> would simply list that one test had unexpectedly
+succeeded and the poor test author would have to hunt through his test output
+to find out which one.  This is particularly problematic when working in large
+teams and finding out that another programmer has already implemented a
+feature elsewhere and your tests may or may not be correct.
+
+Further, with C<TAPx::Parser>, a primitive harness which only reports failing
+tests should look like the following, even though it's wrong:
+
+ my $parser = TAPx::Parser->new( { source => $test_file } );
+ while ( my $result = $parser->next ) {
+     print $result->as_string if ! $result->passed;
+ }
+
+That works, but if we had stuck with the old C<Test::Harness> behavior, it
+would not have reported the unexpectedly succeeding tests unless the harness
+author remembered to test for C<< $result->todo_failed >>.
+
+=back
 
 =head1 ACKNOWLEDGEMENTS
 
@@ -1003,6 +1219,16 @@ strange areas of TAP.  Here are a few who spring to mind:
 =item * Shlomi Fish
          
 =item * Torsten Schoenfeld
+
+=item * Jerry Gay
+
+=item * Aristotle
+
+=item * Adam Kennedy
+
+=item * Yves Orton
+
+=item * Adrian Howard
 
 =back
 

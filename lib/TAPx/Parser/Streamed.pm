@@ -1,11 +1,12 @@
 package TAPx::Parser::Streamed;
 
-use warnings;
 use strict;
-use vars qw($VERSION);
 
+use TAPx::Parser;
 use TAPx::Parser::Results;
-use base 'TAPx::Parser';
+
+use vars qw($VERSION @ISA);
+@ISA = 'TAPx::Parser';
 
 =head1 NAME
 
@@ -13,11 +14,11 @@ TAPx::Parser::Streamed - Parse TAP output from a stream
 
 =head1 VERSION
 
-Version 0.22
+Version 0.30
 
 =cut
 
-$VERSION = '0.22';
+$VERSION = '0.30';
 
 =head1 DESCRIPTION
 
@@ -38,7 +39,9 @@ sub _initialize {
 
 sub _lex {
     my ( $self, $tap ) = @_;
-    my @remaining_tap = $tap !~ /\n/ ? $tap : split /\n/, $tap;
+    my @remaining_tap = defined $tap
+         ? $tap !~ /\n/ ? $tap : split /\n/, $tap
+         : ();
 
     my @tokens;
     my $grammar = $self->_grammar;
@@ -61,20 +64,26 @@ sub _lex {
 sub next {
     my $self   = shift;
     my $stream = $self->_stream;
-    return if $stream->last;
+    return if $stream->is_last;
     my $next = $stream->next;
-    $self->_start_tap( $stream->first ? 1 : 0 );
+    $self->_start_tap( $stream->is_first ? 1 : 0 );
 
-    my $token = TAPx::Parser::Results->new( $self->_lex($next) );
+    my @tokens = $self->_lex($next);
+    my $token;
+    if (@tokens) {
+        $token = TAPx::Parser::Results->new( @tokens );
+    }
 
     # must set _end_tap first or else _validate chokes on ending plans
-    if ( $stream->last ) {
+    if ( $stream->is_last || ! $token ) {
         $self->_end_tap(1);
+        $self->exit($stream->exit);
+        $self->wait($stream->wait);
     }
     $self->_validate($token);
 
     # must call _finish after _validate
-    if ( $stream->last ) {
+    if ( $stream->is_last || ! $token ) {
         $self->_finish;
     }
     return $token;
