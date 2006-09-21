@@ -1,6 +1,17 @@
 Revision history for TAP-Parser
 
-0.30
+0.31     21 September 2006
+         - Fixed bug where Carp::croak without parens could cause Perl to fail
+           to compile on some platforms. [Andreas J. Koenig]
+         - Eliminated the non-portable redirect of STDERR to STDOUT (2>&1) and
+           fixed the synchronization issue.  This involves overridding
+           Test::Builder::failure_output() in a very sneaky way.  I may have
+           to back this out.
+         - Renamed boolean methods to begin with 'is_'.  The methods they
+           replace are documented, deprecated, and will not be removed prior
+           to version 1.00.
+
+0.30     17 September 2006
          - Fixed bug where no output would still claim to have a good plan.
          - Fixed bug where no output would cause parser to die.
          - Fixed bug where failing to specify a plan would be two parse errors

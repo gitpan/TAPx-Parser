@@ -9,11 +9,11 @@ TAPx::Parser::Grammar - A grammar for the original TAP version.
 
 =head1 VERSION
 
-Version 0.30
+Version 0.31
 
 =cut
 
-$VERSION = '0.30';
+$VERSION = '0.31';
 
 =head1 DESCRIPTION
 
@@ -53,9 +53,9 @@ sub new {
 my $ok           = qr/(?:not )?ok\b/;
 my $num          = qr/\d+/;
 my $todo_or_skip = qr/\s*(?i:TODO|SKIP)\b/;
-my $description  =
-qr/(?:#(?!$todo_or_skip)|[^\d#])(?:#(?!$todo_or_skip)|[^#])*/;
-my $directive    = qr/
+my $description
+  = qr/(?:#(?!$todo_or_skip)|[^\d#])(?:#(?!$todo_or_skip)|[^#])*/;
+my $directive = qr/
                      (?i:
                        \#\s+
                        (TODO|SKIP)\b
@@ -68,6 +68,7 @@ my %token_for = (
         syntax  => qr/^1\.\.(\d+)(?:\s*#\s*SKIP\b(.*))?/i,
         handler => sub {
             my ( $self, $line ) = @_;
+            local *__ANON__ = '__ANON__plan_token_handler';
             my $tests_planned = $1;
             my $explanation   = $2;
             my $skip          =
@@ -94,6 +95,7 @@ my %token_for = (
         \z/x,
         handler => sub {
             my ( $self, $line ) = @_;
+            local *__ANON__ = '__ANON__test_token_handler';
             my ( $ok, $num, $desc, $dir, $explanation )
               = ( $1, $2, $3, $4, $5 );
             return $self->_make_test_token(
@@ -110,6 +112,7 @@ my %token_for = (
         syntax  => qr/^#(.*)/,
         handler => sub {
             my ( $self, $line ) = @_;
+            local *__ANON__ = '__ANON__comment_token_handler';
             my $comment = $1;
             return $self->_make_comment_token( $line, $comment );
         },
@@ -118,6 +121,7 @@ my %token_for = (
         syntax  => qr/^Bail out!\s*(.*)/,
         handler => sub {
             my ( $self, $line ) = @_;
+            local *__ANON__ = '__ANON__bailout_token_handler';
             my $explanation = $1;
             return $self->_make_bailout_token( $line, $explanation );
         },

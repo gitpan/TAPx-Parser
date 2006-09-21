@@ -107,5 +107,5 @@ $result = $second_parser->next();
 # TEST
 ok $result->is_test(), "Result is a test";
 # TEST
-ok $result->passed(), "The event has passed";
+ok $result->is_ok(), "The event has passed";
 

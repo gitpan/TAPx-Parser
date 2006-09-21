@@ -7,6 +7,7 @@ use strict;
 
 sub _print;
 use Getopt::Long;
+use Benchmark;
 
 GetOptions(
     'v|verbose' => \my $VERBOSE,
@@ -64,10 +65,20 @@ else {
 }
 
 my $aggregate = TAPx::Parser::Aggregator->new;
+
+my $longest = 0;
+
 foreach my $test (@tests) {
-    my $parser = analyze_test( $test );
+    $longest = length $test if length $test > $longest;
+}
+
+my $start_time = Benchmark->new;
+
+foreach my $test (@tests) {
+    my $parser = analyze_test( $test, $longest );
     $aggregate->add( $test, $parser );
 }
+my $runtime = timestr(timediff(Benchmark->new, $start_time));
 
 my ( $total, $passed, $failed, $errors ) = (
     $aggregate->total,
@@ -81,6 +92,7 @@ Tests run:  $total
 Passed:     $passed
 Failed:     $failed
 Errors:     $errors
+$runtime
 END_SUMMARY
 
 sub analyze_test {
@@ -89,9 +101,18 @@ sub analyze_test {
     my %args = ( source => $test );
     $args{switches} = '-Ilib' if $LIB;
     my $parser = TAPx::Parser->new( \%args );
-    print "$test......";
+
+    my $periods = '.' x (($longest + 4) - length $test);
+    my $name = $test;
+    $name =~ s/\.[[:word:]]+$//;
+    print "$name$periods";
     while ( defined (my $result = $parser->next) ) {
-        _print $result->as_string, $/;
+        if ( $result->is_comment ) {
+            print $result->as_string, $/;
+        }
+        else {
+            _print $result->as_string, $/;
+        }
     }
     if ( !$parser->failed && !$parser->parse_errors ) {
         print "ok\n";

@@ -8,7 +8,6 @@ use lib 'lib';
 use Test::More tests => 33;
 use TAPx::Parser;
 
-
 sub _get_results {
     my $parser = shift;
     my @results;

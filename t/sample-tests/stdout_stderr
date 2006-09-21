@@ -1,0 +1,11 @@
+use Test::More 'no_plan';
+my $tb = Test::More->builder;
+#$tb->failure_output( $tb->output );
+diag 'comments';
+ok 1;
+ok 1;
+ok 1;
+diag 'comment';
+ok 1;
+diag 'more ignored stuff';
+diag 'and yet more';

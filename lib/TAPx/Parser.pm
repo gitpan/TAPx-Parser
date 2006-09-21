@@ -15,11 +15,11 @@ TAPx::Parser - Parse TAP output
 
 =head1 VERSION
 
-Version 0.30
+Version 0.31
 
 =cut
 
-$VERSION = '0.30';
+$VERSION = '0.31';
 
 BEGIN {
     foreach my $method (
@@ -33,7 +33,7 @@ BEGIN {
         _end_plan_error
         _plan_error_found
         exit
-        good_plan
+        is_good_plan
         plan
         tests_planned
         tests_run
@@ -51,6 +51,11 @@ BEGIN {
             $self->{$method} = shift;
         };
     }
+}
+
+sub good_plan {
+    warn 'good_plan() is deprecated.  Please use "is_good_plan()"';
+    goto &is_good_plan;
 }
 
 =head1 SYNOPSIS
@@ -438,9 +443,9 @@ Indicates whether or not this is bailout line.
 
 Indicates whether or not the current line could be parsed.
 
-=head3 passed
+=head3 C<is_ok>
 
-  if ( $result->passed ) { ... }
+  if ( $result->is_ok ) { ... }
 
 Reports whether or not a given result has passed.  Anything which is B<not> a
 test result returns true.  This is merely provided as a convenient shortcut
@@ -449,7 +454,7 @@ which allows you to do this:
  my $parser = TAPx::Parser->new( { source => $source } );
  while ( my $result = $parser->next ) {
      # only print failing results
-     print $result->as_string unless $result->passed;
+     print $result->as_string unless $result->is_ok;
  }
 
 =head2 C<plan> methods
@@ -572,19 +577,25 @@ the accompanying explantion, if present.
 
 For the above line, the explanation is I<not enough acid>.
 
-=head3 C<passed>
+=head3 C<is_ok>
 
-  if ( $result->passed ) { ... }
+  if ( $result->is_ok ) { ... }
 
 Returns a boolean value indicating whether or not the test passed.  Remember
-that for TODO tests, the sense of passing and failing is reversed.
+that for TODO tests, the test always passes.
 
-=head3 C<actual_passed>
+B<Note:>  this was formerly C<passed>.  The latter method is deprecated and
+will issue a warning.
 
-  if ( $result->actual_passed ) { ... }
+=head3 C<is_actual_ok>
+
+  if ( $result->is_actual_ok ) { ... }
 
 Returns a boolean value indicating whether or not the test passed, regardless
 of its TODO status.
+
+B<Note:>  this was formerly C<actual_passed>.  The latter method is deprecated
+and will issue a warning.
 
 =head3 C<has_skip>
 
@@ -601,7 +612,7 @@ Returns a boolean value indicating whether or not this test had a TODO
 directive.
 
 Note that TODO tests I<always> pass.  If you need to know whether or not
-they really passed, check the C<actual_passed> method.
+they really passed, check the C<is_actual_ok> method.
 
 =head1 TOTAL RESULTS
 
@@ -712,12 +723,15 @@ sub skipped { @{ shift->{skipped} } }
 
 ##############################################################################
 
-=head3 C<good_plan>
+=head3 C<is_good_plan>
 
-  if ( $parser->good_plan ) { ... }
+  if ( $parser->is_good_plan ) { ... }
 
 Returns a boolean value indicating whether or not the number of tests planned
 matches the number of tests run.
+
+B<Note:>  this was formerly C<good_plan>.  The latter method is deprecated and
+will issue a warning.
 
 And since we're on that subject ...
 
@@ -824,8 +838,8 @@ sub _add_error {
         has_todo      => 'todo',
         has_skip      => 'skipped',
         todo_failed   => 'todo_failed',
-        passed        => 'passed',
-        actual_passed => 'actual_passed',
+        is_ok         => 'passed',
+        is_actual_ok  => 'actual_passed',
     );
 
     sub _aggregate_results {
@@ -838,8 +852,8 @@ sub _add_error {
             push @{ $self->{$key} } => $num if $test->$method;
         }
 
-        push @{ $self->{actual_failed} } => $num if !$test->actual_passed;
-        push @{ $self->{failed} }        => $num if !$test->passed;
+        push @{ $self->{actual_failed} } => $num if !$test->is_actual_ok;
+        push @{ $self->{failed} }        => $num if !$test->is_ok;
         return $self;
     }
 }
@@ -899,7 +913,7 @@ sub _add_error {
             # test output found after ending plan
             $self->_add_error($error);
             $self->_plan_error_found(1);
-            $self->good_plan(0);
+            $self->is_good_plan(0);
         }
         return $self;
     }
@@ -947,10 +961,10 @@ sub _finish {
         $self->_add_error("More than one plan found in TAP output");
     }
     else {
-        $self->good_plan(1) unless defined $self->good_plan;
+        $self->is_good_plan(1) unless defined $self->is_good_plan;
     }
     if ( $self->tests_run != ( $self->tests_planned || 0 ) ) {
-        $self->good_plan(0);
+        $self->is_good_plan(0);
         if ( defined( my $planned = $self->tests_planned ) ) {
             my $ran = $self->tests_run;
             $self->_add_error(
@@ -968,7 +982,7 @@ sub _finish {
         );
     }
 
-    $self->good_plan(0) unless defined $self->good_plan;
+    $self->is_good_plan(0) unless defined $self->is_good_plan;
     return $self;
 }
 
@@ -1050,11 +1064,11 @@ output:
  my %callbacks = (
      test => sub {
          my $test = shift;
-         if ( $test->passed && not $test->directive ) {
+         if ( $test->is_ok && not $test->directive ) {
              # normal passing test
              print color 'green';
          }
-         elsif ( !$test->passed ) {    # even if it's TODO
+         elsif ( !$test->is_ok ) {    # even if it's TODO
              print color 'white on_red';
          }
          elsif ( $test->has_skip ) {
@@ -1191,7 +1205,7 @@ tests should look like the following, even though it's wrong:
 
  my $parser = TAPx::Parser->new( { source => $test_file } );
  while ( my $result = $parser->next ) {
-     print $result->as_string if ! $result->passed;
+     print $result->as_string if ! $result->is_ok;
  }
 
 That works, but if we had stuck with the old C<Test::Harness> behavior, it
@@ -1202,9 +1216,8 @@ author remembered to test for C<< $result->todo_failed >>.
 
 =head1 ACKNOWLEDGEMENTS
 
-Far too many for me to remember all of them, but let me just say 'thanks' to
-the members of the perl-qa list for answering most of my silly questions about
-strange areas of TAP.  Here are a few who spring to mind:
+All of the following have helped.  Bug reports, patches, (im)moral support, or
+just words of encouragement have all been forthcoming.
 
 =over 4
 
@@ -1229,6 +1242,10 @@ strange areas of TAP.  Here are a few who spring to mind:
 =item * Yves Orton
 
 =item * Adrian Howard
+
+=item * Sean & Lil
+
+=item * Andreas J. Koenig
 
 =back
 

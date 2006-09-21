@@ -68,9 +68,9 @@ isa_ok $test, $TEST;
 is $test->type, 'test', '... and it should report the correct type';
 ok $test->is_test, '... and it should identify itself as a test';
 is $test->ok,      'ok', '... and it should have the correct ok()';
-ok $test->passed,  '... and the correct boolean version of passed()';
-ok $test->actual_passed,
-  '... and the correct boolean version of actual_passed()';
+ok $test->is_ok,   '... and the correct boolean version of is_ok()';
+ok $test->is_actual_ok,
+  '... and the correct boolean version of is_actual_ok()';
 is $test->number, 1, '... and have the correct test number';
 is $test->description, '- input file opened',
   '... and the correct description';
@@ -101,9 +101,9 @@ isa_ok $failed, $TEST;
 is $failed->type, 'test', '... and it should report the correct type';
 ok $failed->is_test, '... and it should identify itself as a test';
 is $failed->ok,      'not ok', '... and it should have the correct ok()';
-ok $failed->passed,  '... and TODO tests should reverse the sense of passing';
-ok !$failed->actual_passed,
-  '... and the correct boolean version of actual_passed ()';
+ok $failed->is_ok,   '... and TODO tests should always pass';
+ok !$failed->is_actual_ok,
+  '... and the correct boolean version of is_actual_ok ()';
 is $failed->number, 2, '... and have the correct failed number';
 is $failed->description, 'first line of the input valid',
   '... and the correct description';
@@ -138,9 +138,9 @@ isa_ok $test, $TEST;
 is $test->type, 'test', '... and it should report the correct type';
 ok $test->is_test, '... and it should identify itself as a test';
 is $test->ok,      'ok', '... and it should have the correct ok()';
-ok $test->passed,  '... and the correct boolean version of passed()';
-ok $test->actual_passed,
-  '... and the correct boolean version of actual_passed()';
+ok $test->is_ok,   '... and the correct boolean version of is_ok()';
+ok $test->is_actual_ok,
+  '... and the correct boolean version of is_actual_ok()';
 is $test->number, 3, '... and have the correct test number';
 is $test->description, '- read the rest of the file',
   '... and the correct description';
@@ -160,9 +160,9 @@ isa_ok $failed, $TEST;
 is $failed->type, 'test', '... and it should report the correct type';
 ok $failed->is_test, '... and it should identify itself as a test';
 is $failed->ok, 'not ok', '... and it should have the correct ok()';
-ok !$failed->passed, '... and the tests should not have passed';
-ok !$failed->actual_passed,
-  '... and the correct boolean version of actual_passed ()';
+ok !$failed->is_ok, '... and the tests should not have passed';
+ok !$failed->is_actual_ok,
+  '... and the correct boolean version of is_actual_ok ()';
 is $failed->number, 4, '... and have the correct failed number';
 is $failed->description, '- this is a real failure',
   '... and the correct description';
@@ -183,9 +183,9 @@ isa_ok $test, $TEST;
 is $test->type, 'test', '... and it should report the correct type';
 ok $test->is_test, '... and it should identify itself as a test';
 is $test->ok,      'ok', '... and it should have the correct ok()';
-ok $test->passed,  '... and the correct boolean version of passed()';
-ok $test->actual_passed,
-  '... and the correct boolean version of actual_passed()';
+ok $test->is_ok,   '... and the correct boolean version of is_ok()';
+ok $test->is_actual_ok,
+  '... and the correct boolean version of is_actual_ok()';
 is $test->number, 5, '... and have the correct test number';
 ok !$test->description, '... and skipped tests have no description';
 is $test->directive, 'SKIP', '... and teh correct directive';
@@ -206,11 +206,10 @@ isa_ok $bonus, $TEST;
 can_ok $bonus, 'todo_failed';
 is $bonus->type, 'test', 'TODO tests should parse correctly';
 ok $bonus->is_test, '... and it should identify itself as a test';
-is $bonus->ok, 'ok', '... and it should have the correct ok()';
-ok $bonus->passed,
-  '... and TODO tests should not reverse the sense of passing';
-ok $bonus->actual_passed,
-  '... and the correct boolean version of actual_passed ()';
+is $bonus->ok,      'ok', '... and it should have the correct ok()';
+ok $bonus->is_ok,   '... and TODO tests should not always pass';
+ok $bonus->is_actual_ok,
+  '... and the correct boolean version of is_actual_ok ()';
 is $bonus->number, 6, '... and have the correct failed number';
 is $bonus->description, '- you shall not pass!',
   '... and the correct description';
@@ -234,9 +233,9 @@ can_ok $passed, 'todo_failed';
 is $passed->type, 'test', 'TODO tests should parse correctly';
 ok $passed->is_test, '... and it should identify itself as a test';
 is $passed->ok,      'not ok', '... and it should have the correct ok()';
-ok $passed->passed,  '... and TODO tests should reverse the sense of passing';
-ok !$passed->actual_passed,
-  '... and the correct boolean version of actual_passed ()';
+ok $passed->is_ok,   '... and TODO tests should always pass';
+ok !$passed->is_actual_ok,
+  '... and the correct boolean version of is_actual_ok ()';
 is $passed->number, 7, '... and have the correct passed number';
 is $passed->description, '- Gandalf wins.  Game over.',
   '... and the correct description';
@@ -346,9 +345,9 @@ isa_ok $test, $TEST;
 is $test->type, 'test', '... and it should report the correct type';
 ok $test->is_test, '... and it should identify itself as a test';
 is $test->ok,      'ok', '... and it should have the correct ok()';
-ok $test->passed,  '... and the correct boolean version of passed()';
-ok $test->actual_passed,
-  '... and the correct boolean version of actual_passed()';
+ok $test->is_ok,   '... and the correct boolean version of is_ok()';
+ok $test->is_actual_ok,
+  '... and the correct boolean version of is_actual_ok()';
 is $test->number, 1, '... and have the correct test number';
 is $test->description, '- input file opened',
   '... and the correct description';
@@ -388,9 +387,9 @@ isa_ok $test, $TEST;
 is $test->type, 'test', '... and it should report the correct type';
 ok $test->is_test, '... and it should identify itself as a test';
 is $test->ok,      'ok', '... and it should have the correct ok()';
-ok $test->passed,  '... and the correct boolean version of passed()';
-ok $test->actual_passed,
-  '... and the correct boolean version of actual_passed()';
+ok $test->is_ok,   '... and the correct boolean version of is_ok()';
+ok $test->is_actual_ok,
+  '... and the correct boolean version of is_actual_ok()';
 is $test->number, 2, '... and have the correct test number';
 is $test->description, '- read the rest of the file',
   '... and the correct description';

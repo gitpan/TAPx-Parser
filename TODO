@@ -1,5 +1,6 @@
 TODO:
 
+     - Unknown callback keys should be fatal.
      - All boolean methods must start with is_ (Aristotle and Paul Johnson)
      - Run it against Perl's test suite (first prove, then tprove).
      - Run Perl::MinimumVersion over it

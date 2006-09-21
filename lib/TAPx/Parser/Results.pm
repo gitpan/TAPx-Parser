@@ -25,11 +25,11 @@ TAPx::Parser::Results - TAPx::Parser output
 
 =head1 VERSION
 
-Version 0.30
+Version 0.31
 
 =cut
 
-$VERSION = '0.30';
+$VERSION = '0.31';
 
 =head2 DESCRIPTION
 
@@ -73,7 +73,7 @@ sub new {
     $token                = Data::Dumper::Dumper($token);
 
     # this should never happen!
-    Carp::croak "Could not determine class for\n$token";
+    Carp::croak("Could not determine class for\n$token");
 }
 
 =head3 Boolean methods
@@ -158,15 +158,20 @@ sub as_string { shift->{raw} }
 
 ##############################################################################
 
-=head3 passed
+=head3 is_ok
 
-  if ( $result->passed ) { ... }
+  if ( $result->is_ok ) { ... }
 
 Reports whether or not a given result has passed.  Anything which is B<not> a
 test result returns true.  This is merely provided as a convenient shortcut.
 
 =cut
 
-sub passed { 1 };
+sub is_ok { 1 };
+
+sub passed {
+    warn 'passed() is deprecated.  Please use "is_ok()"';
+    goto &is_ok;
+}
 
 1;

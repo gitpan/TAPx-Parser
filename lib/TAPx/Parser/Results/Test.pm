@@ -14,11 +14,11 @@ TAPx::Parser::Results::Test - Test result token.
 
 =head1 VERSION
 
-Version 0.30
+Version 0.31
 
 =cut
 
-$VERSION = '0.30';
+$VERSION = '0.31';
 
 =head1 DESCRIPTION
 
@@ -114,36 +114,46 @@ sub explanation { shift->{explanation} }
 
 ##############################################################################
 
-=head3 passed
+=head3 is_ok
 
-  if ( $result->passed ) { ... }
+  if ( $result->is_ok ) { ... }
 
 Returns a boolean value indicating whether or not the test passed.  Remember
 that for TODO tests, the test always passes.
 
 =cut
 
-sub passed {
+sub is_ok {
     my $self = shift;
 
     # TODO directives reverse the sense of a test.
     return $self->has_todo ? 1 : $self->ok !~ /not/;
 }
 
+sub passed {
+    warn 'passed() is deprecated.  Please use "is_ok()"';
+    goto &is_ok;
+}
+
 ##############################################################################
 
-=head3 C<actual_passed>
+=head3 C<is_actual_ok>
 
-  if ( $result->actual_passed ) { ... }
+  if ( $result->is_actual_ok ) { ... }
 
 Returns a boolean value indicating whether or not the test passed, regardless
 of its TODO status.
 
 =cut
 
-sub actual_passed {
+sub is_actual_ok {
     my $self = shift;
     return $self->{ok} !~ /not/;
+}
+
+sub actual_passed {
+    warn 'actual_passed() is deprecated.  Please use "is_actual_ok()"';
+    goto &is_actual_ok;
 }
 
 ##############################################################################
@@ -164,7 +174,7 @@ This is used to track which tests unexpectedly succeeded.
 
 sub todo_failed {
     my $self = shift;
-    return $self->has_todo && $self->actual_passed;
+    return $self->has_todo && $self->is_actual_ok;
 }
 
 ##############################################################################

@@ -16,11 +16,11 @@ TAPx::Parser::Source::Perl - Stream Perl output
 
 =head1 VERSION
 
-Version 0.30
+Version 0.31
 
 =cut
 
-$VERSION = '0.30';
+$VERSION = '0.31';
 
 =head1 DESCRIPTION
 
@@ -83,7 +83,7 @@ sub filename {
 
  my $switches = $source->switches;
  my @switches = $source->switches;
- $source->switches(@switches);
+ $source->switches(\@switches);
 
 Getter/setter for the additional switches to pass to the perl executable.  One
 common switch would be to set an include directory:
@@ -97,7 +97,15 @@ sub switches {
     unless (@_) {
         return wantarray ? @{ $self->{switches} } : $self->{switches};
     }
-    $self->{switches} = [@_];    # force a copy
+    my @switches;
+    if ( 1 == @_ ) {
+        my $switches = shift;
+        push @switches => 'ARRAY' eq ref $switches ? @$switches : $switches;
+    }
+    if ( 1 < @_ ) {
+        push @switches => @_;
+    }
+    $self->{switches} = [@switches];    # force a copy
     return $self;
 }
 
@@ -124,7 +132,7 @@ sub get_stream {
     # redirecting STDERR to STDOUT seems to keep them in sync
     # but I lose a bit of formatting for some reason
     my $sym = gensym;
-    if ( open $sym, "$command 2>&1 |" ) {
+    if ( open $sym, "$command |" ) {
         return TAPx::Parser::Iterator->new($sym);
     }
     else {
@@ -193,7 +201,10 @@ sub _get_command {
 sub _switches {
     my $self     = shift;
     my $file     = $self->filename;
-    my @switches = $self->switches;
+    my @switches = (
+         $self->switches,
+         qw(-MTest::Builder -MTAPX::Parser::Builder),
+    );
 
     local *TEST;
     open( TEST, $file ) or print "can't open $file. $!\n";
@@ -217,6 +228,7 @@ sub _switches {
     for (@switches) {
         $_ = qq["$_"] if ( ( /\s/ || IS_VMS ) && !/^".*"$/ );
     }
+
     return join( " ", @switches );
 }
 

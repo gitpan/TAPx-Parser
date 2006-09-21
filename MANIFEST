@@ -7,6 +7,7 @@ examples/tprove_color
 examples/tprove_gtk
 lib/TAPx/Parser.pm
 lib/TAPx/Parser/Aggregator.pm
+lib/TAPx/Parser/Builder.pm
 lib/TAPx/Parser/Grammar.pm
 lib/TAPx/Parser/Iterator.pm
 lib/TAPx/Parser/Results.pm
@@ -57,6 +58,7 @@ t/sample-tests/skip
 t/sample-tests/skip_nomsg
 t/sample-tests/skipall
 t/sample-tests/skipall_nomsg
+t/sample-tests/stdout_stderr
 t/sample-tests/switches
 t/sample-tests/taint
 t/sample-tests/todo_inline

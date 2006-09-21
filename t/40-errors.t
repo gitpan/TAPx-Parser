@@ -135,7 +135,7 @@ is $parser->parse_errors, 1,
 is + ( $parser->parse_errors )[0], 'More than one plan found in TAP output',
   '... with a correct error message';
 
-can_ok $parser, 'good_plan';
+can_ok $parser, 'is_good_plan';
 $parser->_parse(<<'END_TAP');
 1..2
 ok 1 - input file opened
@@ -150,10 +150,10 @@ is + ( $parser->parse_errors )[0],
   '... with a correct error message';
 
 # XXX internals:  plan will not set to true if defined
-$parser->good_plan(undef);
+$parser->is_good_plan(undef);
 $parser->_parse(<<'END_TAP');
 ok 1 - input file opened
 1..1
 END_TAP
 
-ok $parser->good_plan, '... and it should return true if the plan is correct';
+ok $parser->is_good_plan, '... and it should return true if the plan is correct';
