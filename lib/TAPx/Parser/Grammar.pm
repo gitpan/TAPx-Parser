@@ -9,11 +9,11 @@ TAPx::Parser::Grammar - A grammar for the original TAP version.
 
 =head1 VERSION
 
-Version 0.31
+Version 0.32
 
 =cut
 
-$VERSION = '0.31';
+$VERSION = '0.32';
 
 =head1 DESCRIPTION
 

@@ -4,7 +4,7 @@ $ENV{PATH} = '';
 unshift @INC, 't/lib';
 
 use strict;
-use Test::More tests => 2613;
+use Test::More tests => 2671;
 use File::Spec;
 use Data::Dumper;
 
@@ -2210,6 +2210,57 @@ my %samples = (
         'exit'        => 0,
         wait          => 0,
     },
+    schwern => {
+
+        # this switch is only necesassary when running tests because it allows
+        # the tests executed with 'open("$command |")' to pick up the current
+        # lib path.
+        results => [
+            {   is_plan       => TRUE,
+                passed        => TRUE,
+                is_ok         => TRUE,
+                raw           => '1..1',
+                tests_planned => 1,
+            },
+            {   is_comment => TRUE,
+                passed     => TRUE,
+                is_ok      => TRUE,
+                comment    => 
+                "You named your test '42'.  You shouldn't use numbers for your test names."
+            },
+            {   is_comment => TRUE,
+                passed     => TRUE,
+                is_ok      => TRUE,
+                comment    => 'Very confusing.',
+            },
+            {   actual_passed => TRUE,
+                is_actual_ok  => TRUE,
+                passed        => TRUE,
+                is_ok         => TRUE,
+                is_test       => TRUE,
+                has_skip      => FALSE,
+                has_todo      => FALSE,
+                number        => 1,
+                description   => '- 42',
+                explanation   => '',
+            },
+        ],
+        plan          => '1..1',
+        passed        => [ 1 .. 1 ],
+        actual_passed => [ 1 .. 1 ],
+        failed        => [],
+        actual_failed => [],
+        todo          => [],
+        todo_failed   => [],
+        skipped       => [],
+        good_plan     => TRUE,
+        is_good_plan  => TRUE,
+        tests_planned => 1,
+        tests_run     => 1,
+        parse_errors  => [],
+        'exit'        => 0,
+        wait          => 0,
+    },
 );
 
 my %HANDLER_FOR = (
@@ -2220,7 +2271,7 @@ my %HANDLER_FOR = (
 
 foreach my $test ( sort keys %samples ) {
 
-    #next unless 'segfault' eq $test;
+    #next unless 'schwern' eq $test;
     my $details = $samples{$test};
     my $results = delete $details->{results};
     my $args    = delete $details->{__ARGS__} || { switches => '' };
