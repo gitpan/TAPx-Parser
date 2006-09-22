@@ -1,5 +1,15 @@
 Revision history for TAP-Parser
 
+0.33     22 September 2006
+         - OK, I'm getting ticked off by some of the comments on Perl-QA so I
+           rushed this out the door and broke it :(  I'm backing out one test
+           and slowing down a bit.
+
+0.32     22 September 2006
+         - Applied patch from Schwern which fixed the Builder package name
+           (TAPx:: instead of TAPX:: -- stupid case-insensitive package
+           names!).  [rt.cpan.org #21605]
+
 0.31     21 September 2006
          - Fixed bug where Carp::croak without parens could cause Perl to fail
            to compile on some platforms. [Andreas J. Koenig]
