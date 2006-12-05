@@ -1768,7 +1768,7 @@ my %samples = (
         todo          => [],
         todo_failed   => [],
         skipped       => [],
-        good_plan     => FALSE,
+        is_good_plan  => FALSE,
         tests_planned => 15,
         tests_run     => 15,
 
@@ -2271,7 +2271,7 @@ my %HANDLER_FOR = (
 
 foreach my $test ( sort keys %samples ) {
 
-    #next unless 'schwern' eq $test;
+    #next unless 'out_of_order' eq $test;
     my $details = $samples{$test};
     my $results = delete $details->{results};
     my $args    = delete $details->{__ARGS__} || { switches => '' };

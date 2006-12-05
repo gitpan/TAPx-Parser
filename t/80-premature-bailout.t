@@ -6,7 +6,6 @@ use Test::More tests => 14;
 use TAPx::Parser;
 
 use TAPx::Parser::Iterator;
-use TAPx::Parser::Streamed;
 
 sub tap_to_lines
 {

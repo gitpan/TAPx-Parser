@@ -9,11 +9,11 @@ TAPx::Parser::Grammar - A grammar for the original TAP version.
 
 =head1 VERSION
 
-Version 0.33
+Version 0.40
 
 =cut
 
-$VERSION = '0.33';
+$VERSION = '0.40';
 
 =head1 DESCRIPTION
 
@@ -211,11 +211,15 @@ sub _make_plan_token {
 
 sub _make_test_token {
     my ( $self, $line, $ok, $num, $desc, $dir, $explanation ) = @_;
-    my %test;
-    @test{qw<ok test_num description directive explanation>}
-      = map { _trim($_) } ( $ok, $num, $desc, uc($dir), $explanation );
-    $test{raw}  = $line;
-    $test{type} = 'test';
+    my %test = (
+        ok          => $ok,
+        test_num    => $num,
+        description => _trim($desc),
+        directive   => uc($dir),
+        explanation => _trim($explanation),
+        raw         => $line,
+        type        => 'test',
+    );
     return \%test;
 }
 

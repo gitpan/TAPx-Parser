@@ -3,21 +3,11 @@
 use strict;
 
 use lib 'lib';
+
 #use Test::More 'no_plan';
 
 use Test::More tests => 33;
 use TAPx::Parser;
-
-sub _get_results {
-    my $parser = shift;
-    my @results;
-    while ( my $result = $parser->next ) {
-        push @results => $result;
-    }
-    return @results;
-}
-
-my $parser = TAPx::Parser->new;
 
 my $tap = <<'END_TAP';
 1..4
@@ -29,7 +19,13 @@ ok 3 - read the rest of the file
 not ok 4 - this is a real failure
 Bail out!  We ran out of foobar.
 END_TAP
-ok $parser->_parse($tap), '... we should be able to parse bailed out tests';
+ok my $parser = TAPx::Parser->new( { tap => $tap } ),
+  '... we should be able to parse bailed out tests';
+
+my @results;
+while ( my $result = $parser->next ) {
+    push @results => $result;
+}
 
 can_ok $parser, 'passed';
 is $parser->passed, 3,
@@ -64,12 +60,12 @@ ok !$parser->skipped,
 # check the plan
 
 can_ok $parser, 'plan';
-is $parser->plan,      '1..4', '... and we should have the correct plan';
+is $parser->plan,          '1..4', '... and we should have the correct plan';
 is $parser->tests_planned, 4,      '... and the correct number of tests';
 
 # results() is sane?
 
-ok my @results = _get_results($parser), 'The parser should return results';
+ok @results, 'The parser should return results';
 is scalar @results, 8, '... and there should be one for each line';
 
 # check the test plan
@@ -110,10 +106,10 @@ ok $failed->is_test, '... and yet another test';
 # ok 5 # skip we have no description
 # skipped test
 my $bailout = shift @results;
-ok $bailout->is_bailout,  'And finally we should have a bailout';
-is $bailout->as_string, 'We ran out of foobar.',
-   '... and as_string() should return the explanation';
+ok $bailout->is_bailout, 'And finally we should have a bailout';
+is $bailout->as_string,  'We ran out of foobar.',
+  '... and as_string() should return the explanation';
 is $bailout->raw, 'Bail out!  We ran out of foobar.',
-   '... and raw() should return the explanation';
+  '... and raw() should return the explanation';
 is $bailout->explanation, 'We ran out of foobar.',
   '... and it should have the correct explanation';

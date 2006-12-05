@@ -17,7 +17,6 @@ lib/TAPx/Parser/Results/Plan.pm
 lib/TAPx/Parser/Results/Test.pm
 lib/TAPx/Parser/Results/Unknown.pm
 lib/TAPx/Parser/Source/Perl.pm
-lib/TAPx/Parser/Streamed.pm
 Makefile.PL
 MANIFEST
 META.yml			# Will be created by "make dist"

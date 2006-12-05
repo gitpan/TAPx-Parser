@@ -1,8 +1,58 @@
---- #YAML:1.0
+---
 name: TAPx-Parser
-version: 0.33
+version: 0.40
 author:
   - 'Curtis "Ovid" Poe <ovid@cpan.org>'
-abstract: "Parse TAP output"
+abstract: Parse TAP output
 license: perl
-generated_by: Module::Build version 0.2704, without YAML.pm
+resources:
+  license: http://dev.perl.org/licenses/
+requires:
+  Test::More: 0
+provides:
+  TAPx::Parser:
+    file: lib/TAPx/Parser.pm
+    version: 0.40
+  TAPx::Parser::Aggregator:
+    file: lib/TAPx/Parser/Aggregator.pm
+    version: 0.40
+  TAPx::Parser::Builder:
+    file: lib/TAPx/Parser/Builder.pm
+    version: 0.40
+  TAPx::Parser::Grammar:
+    file: lib/TAPx/Parser/Grammar.pm
+    version: 0.40
+  TAPx::Parser::Iterator:
+    file: lib/TAPx/Parser/Iterator.pm
+    version: 0.40
+  TAPx::Parser::Iterator::ARRAY:
+    file: lib/TAPx/Parser/Iterator.pm
+    version: 0.40
+  TAPx::Parser::Iterator::FH:
+    file: lib/TAPx/Parser/Iterator.pm
+    version: 0.40
+  TAPx::Parser::Results:
+    file: lib/TAPx/Parser/Results.pm
+    version: 0.40
+  TAPx::Parser::Results::Bailout:
+    file: lib/TAPx/Parser/Results/Bailout.pm
+    version: 0.40
+  TAPx::Parser::Results::Comment:
+    file: lib/TAPx/Parser/Results/Comment.pm
+    version: 0.40
+  TAPx::Parser::Results::Plan:
+    file: lib/TAPx/Parser/Results/Plan.pm
+    version: 0.40
+  TAPx::Parser::Results::Test:
+    file: lib/TAPx/Parser/Results/Test.pm
+    version: 0.40
+  TAPx::Parser::Results::Unknown:
+    file: lib/TAPx/Parser/Results/Unknown.pm
+    version: 0.40
+  TAPx::Parser::Source::Perl:
+    file: lib/TAPx/Parser/Source/Perl.pm
+    version: 0.40
+generated_by: Module::Build version 0.2805
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2

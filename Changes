@@ -1,5 +1,14 @@
 Revision history for TAP-Parser
 
+Revision history for TAP-Parser
+
+0.40     05 December 2006
+         - Removed TAPx::Parser::Streamed and folded its functionality into
+           TAPx::Parser.
+         - Fixed by where sometimes is_good_plan would return a false
+           positive (exposed by refactoring).
+         - A number of tiny performance enhancements.
+
 0.33     22 September 2006
          - OK, I'm getting ticked off by some of the comments on Perl-QA so I
            rushed this out the door and broke it :(  I'm backing out one test

@@ -9,11 +9,11 @@ TAPx::Parser::Iterator - Internal TAPx::Parser Iterator
 
 =head1 VERSION
 
-Version 0.33
+Version 0.40
 
 =cut
 
-$VERSION = '0.33';
+$VERSION = '0.40';
 
 =head1 SYNOPSIS
 
@@ -80,7 +80,7 @@ package TAPx::Parser::Iterator::FH;
 
 use vars qw($VERSION @ISA);
 @ISA     = 'TAPx::Parser::Iterator';
-$VERSION = '0.33';
+$VERSION = '0.40';
 
 sub new {
     my ( $class, $thing ) = @_;
@@ -103,8 +103,7 @@ sub next {
     my $fh   = $self->{fh};
 
     local $/ = "\n";
-    if ( defined $self->{next} ) {
-        my $line = $self->{next};
+    if ( defined ( my $line = $self->{next} ) ) {
         if ( defined( my $next = <$fh> ) ) {
             chomp( $self->{next} = $next );
             $self->{is_first} = 0;
@@ -115,11 +114,15 @@ sub next {
         return $line;
     }
     else {
-        $self->{is_first} = 1 unless $self->is_last;
+        $self->{is_first} = 1 unless $self->{is_last};
         local $^W;    # Don't want to chomp undef values
         chomp( my $line = <$fh> );
-        chomp( $self->{next} = <$fh> );
-        $self->_finish unless defined $line;
+        unless ( defined $line ) {
+            $self->_finish;
+        }
+        else {
+            chomp( $self->{next} = <$fh> );
+        }
         return $line;
     }
 }
@@ -139,7 +142,7 @@ package TAPx::Parser::Iterator::ARRAY;
 
 use vars qw($VERSION @ISA);
 @ISA     = 'TAPx::Parser::Iterator';
-$VERSION = '0.33';
+$VERSION = '0.40';
 
 sub new {
     my ( $class, $thing ) = @_;

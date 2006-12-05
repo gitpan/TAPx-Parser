@@ -1,6 +1,6 @@
 #!/usr/bin/perl -wT
 
-use Test::More tests => 24;
+use Test::More tests => 22;
 
 BEGIN {
     my @classes = qw(
@@ -8,7 +8,6 @@ BEGIN {
       TAPx::Parser::Aggregator
       TAPx::Parser::Grammar
       TAPx::Parser::Iterator
-      TAPx::Parser::Streamed
       TAPx::Parser::Results
       TAPx::Parser::Results::Comment
       TAPx::Parser::Results::Plan

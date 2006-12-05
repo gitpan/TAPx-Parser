@@ -9,11 +9,11 @@ TAPx::Parser::Aggregator - Aggregate TAPx::Parser results.
 
 =head1 VERSION
 
-Version 0.33
+Version 0.40
 
 =cut
 
-$VERSION = '0.33';
+$VERSION = '0.40';
 
 =head1 SYNOPSIS
 

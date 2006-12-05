@@ -7,7 +7,6 @@ use TAPx::Parser::Grammar;
 use TAPx::Parser::Results;
 use TAPx::Parser::Source::Perl;
 use TAPx::Parser::Iterator;
-use TAPx::Parser::Streamed;
 
 =head1 NAME
 
@@ -15,11 +14,11 @@ TAPx::Parser - Parse TAP output
 
 =head1 VERSION
 
-Version 0.33
+Version 0.40
 
 =cut
 
-$VERSION = '0.33';
+$VERSION = '0.40';
 
 BEGIN {
     foreach my $method (
@@ -28,7 +27,6 @@ BEGIN {
         _plan_found
         _start_tap
         _stream
-        _stream_started
         _grammar
         _end_plan_error
         _plan_error_found
@@ -42,14 +40,24 @@ BEGIN {
       )
     {
         no strict 'refs';
-        *$method = sub {
-            my $self = shift;
-            return $self->{$method} unless @_;
-            unless ( ( ref $self ) =~ /^TAPx::Parser/ ) {    # trusted methods
-                $self->_croak("$method() may not be set externally");
-            }
-            $self->{$method} = shift;
-        };
+        # another tiny performance hack
+        if ( $method =~ /^_/ ) {
+            *$method = sub {
+                my $self = shift;
+                return $self->{$method} unless @_;
+                unless ( ( ref $self ) =~ /^TAPx::Parser/ ) {    # trusted methods
+                    $self->_croak("$method() may not be set externally");
+                }
+                $self->{$method} = shift;
+            };
+        }
+        else {
+            *$method = sub {
+                my $self = shift;
+                return $self->{$method} unless @_;
+                $self->{$method} = shift;
+            };
+        }
     }
 }
 
@@ -194,8 +202,29 @@ module and related classes for more information on how to use them.
 =cut
 
 sub next {
-    my $self = shift;
-    return shift @{ $self->{results} };
+    my $self   = shift;
+    my $stream = $self->_stream;
+    return if $stream->is_last;
+    my $next = $stream->next;
+    $self->_start_tap( $stream->is_first );
+
+    my @tokens = $self->_lex($next);
+    my $token;
+    if (@tokens) {
+        $token = TAPx::Parser::Results->new(@tokens);
+    }
+
+    # must set _end_tap first or else _validate chokes on ending plans
+    if ( $stream->is_last ) {
+        $self->_end_tap(1);
+        $self->exit( $stream->exit );
+        $self->wait( $stream->wait );
+        $self->_validate($token);
+        $self->_finish;
+        return $token;
+    }
+    $self->_validate($token);
+    return $token;
 }
 
 ##############################################################################
@@ -248,58 +277,58 @@ sub run {
         parse_errors  => [],    # perfect TAP should have none
     );
 
-    # XXX This is in need of some serious refactoring :(
     sub _initialize {
         my ( $self, $arg_for ) = @_;
 
+        # everything here is basically designed to convert any TAP source to a
+        # stream.
         $arg_for ||= {};
-        my $stream   = delete $arg_for->{stream};
-        my $tap      = delete $arg_for->{tap};
-        my $source   = delete $arg_for->{source};
+        my $stream = delete $arg_for->{stream};
+        my $tap    = delete $arg_for->{tap};
+        my $source = delete $arg_for->{source};
         if ( 1 < grep {defined} $stream, $tap, $source ) {
             $self->_croak(
-                "You may only choose one of 'stream', 'tap', or'source'" );
+                "You may only choose one of 'stream', 'tap', or'source'");
         }
-        if ($stream) {
-            $arg_for->{stream} = $stream;
-            return TAPx::Parser::Streamed->new($arg_for);
+        if ($tap) {
+            $stream = TAPx::Parser::Iterator->new( [ split "\n" => $tap ] );
         }
         elsif ($source) {
-            if ( $source =~ /\n/ ) {
-                $arg_for->{tap} = $tap;
-                return TAPx::Parser->new($arg_for);
-            }
-            elsif ( ref $source ) {
-                $arg_for->{stream} = TAPx::Parser::Iterator->new($source);
+            if ( ref $source ) {
+                $stream = TAPx::Parser::Iterator->new($source);
             }
             elsif ( -e $source ) {
 
                 # eventually we'll try to open this up to other sources
                 my $perl = TAPx::Parser::Source::Perl->new;
-                $perl->switches($arg_for->{switches}) if $arg_for->{switches};
-                my $stream = $perl->filename($source)->get_stream;
+                $perl->switches( $arg_for->{switches} )
+                  if $arg_for->{switches};
+                $stream = $perl->filename($source)->get_stream;
                 if ( defined $stream->exit ) {
                     $self->exit( $stream->exit );
                 }
                 if ( defined $stream->wait ) {
                     $self->wait( $stream->wait );
                 }
-                $arg_for->{stream} = $stream;
+                $stream = $stream;
             }
             else {
                 $self->_croak("Cannot determine source for $source");
             }
-            return TAPx::Parser::Streamed->new($arg_for);
         }
+
+        unless ($stream) {
+            $self->_croak("PANIC:  could not determine stream");
+        }
+
+        $self->_stream($stream);
+        $self->_start_tap(undef);
+        $self->_end_tap(undef);
         $self->_grammar( TAPx::Parser::Grammar->new($self) )
           ;    # eventually pass a version
-        #@{$self}{keys %initialize} = values %initialize;
+
         while ( my ( $k, $v ) = each %initialize ) {
             $self->{$k} = 'ARRAY' eq ref $v ? [] : $v;
-        }
-        if ($tap) {
-            $self->_tap($tap);
-            $self->_parse;
         }
         $self->{code_for} = $arg_for->{callbacks} || {};
         return $self;
@@ -330,35 +359,6 @@ sub _callback_for {
         }
         return $token;
     }
-
-    sub _lex {
-        my $self = shift;
-        $first_token = 1;
-        @tokens      = ();
-        my @remaining_tap = split /\n/, $self->_tap;
-
-        my $grammar = $self->_grammar;
-        LINE: while ( defined( my $line = shift @remaining_tap ) ) {
-            foreach my $type ( $grammar->token_types ) {
-                my $syntax = $grammar->syntax_for($type);
-                if ( $line =~ $syntax ) {
-                    my $handler = $grammar->handler_for($type);
-                    push @tokens => $grammar->$handler($line);
-                    next LINE;
-                }
-            }
-            push @tokens => $grammar->_make_unknown_token($line);
-        }
-        return $self;
-    }
-}
-
-sub _tap {
-    my $self = shift;
-    return $self->{tap} unless @_;
-    $self->_initialize;    # reset state
-    $self->{tap} = shift;
-    return $self;
 }
 
 =head1 INDIVIDUAL RESULTS
@@ -833,29 +833,19 @@ sub _add_error {
     return $self;
 }
 
-{
-    my %track = (
-        has_todo      => 'todo',
-        has_skip      => 'skipped',
-        todo_failed   => 'todo_failed',
-        is_ok         => 'passed',
-        is_actual_ok  => 'actual_passed',
-    );
+sub _aggregate_results {
+    my ( $self, $test ) = @_;
 
-    sub _aggregate_results {
-        my ( $self, $test ) = @_;
+    my $num = $test->number;
 
-        my ( $actual, $status );
-        my $num = $test->number;
+    push @{ $self->{todo} }          => $num if $test->has_todo;
+    push @{ $self->{todo_failed} }   => $num if $test->todo_failed;
+    push @{ $self->{passed} }        => $num if $test->is_ok;
+    push @{ $self->{actual_passed} } => $num if $test->is_actual_ok;
+    push @{ $self->{skipped} }       => $num if $test->has_skip;
 
-        while ( my ( $method, $key ) = each %track ) {
-            push @{ $self->{$key} } => $num if $test->$method;
-        }
-
-        push @{ $self->{actual_failed} } => $num if !$test->is_actual_ok;
-        push @{ $self->{failed} }        => $num if !$test->is_ok;
-        return $self;
-    }
+    push @{ $self->{actual_failed} } => $num if !$test->is_actual_ok;
+    push @{ $self->{failed} }        => $num if !$test->is_ok;
 }
 
 {
@@ -935,19 +925,26 @@ sub _add_error {
     }
 }
 
-sub _parse {
+sub _lex {
     my ( $self, $tap ) = @_;
-    $tap ||= $self->_tap;
-    $self->_tap($tap);
-    $self->{results} = [];
-    $self->_lex;
-    while ( my $token = $self->_tokens ) {
-        my $result = TAPx::Parser::Results->new($token);
-        $self->_validate($result);
-        push @{ $self->{results} } => $result;
+    my @remaining_tap = defined $tap ? $tap : ();
+
+    my @tokens;
+    my $grammar = $self->_grammar;
+    LINE: foreach my $line (@remaining_tap) {
+
+        # XXX this is going to cause issues with streams
+        foreach my $type ( $grammar->token_types ) {
+            my $syntax = $grammar->syntax_for($type);
+            if ( $line =~ $syntax ) {
+                my $handler = $grammar->handler_for($type);
+                push @tokens => $grammar->$handler($line);
+                next LINE;
+            }
+        }
+        push @tokens => $grammar->_make_unknown_token($line);
     }
-    $self->_finish;
-    return $self;
+    return @tokens;
 }
 
 sub _finish {

@@ -7,7 +7,6 @@ use Test::More tests => 52;
 use TAPx::Parser;
 
 use TAPx::Parser::Iterator;
-use TAPx::Parser::Streamed;
 
 sub array_ref_from {
     my $string = shift;

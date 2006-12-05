@@ -8,18 +8,17 @@ use TAPx::Parser::Iterator;
 use Test::More tests => 47;
 
 use TAPx::Parser;
-use TAPx::Parser::Streamed;
 use TAPx::Parser::Iterator;
 
 my ( $STREAMED, $ITER )
-  = ( 'TAPx::Parser::Streamed', 'TAPx::Parser::Iterator' );
+  = ( 'TAPx::Parser', 'TAPx::Parser::Iterator' );
 my $ITER_FH    = "${ITER}::FH";
 my $ITER_ARRAY = "${ITER}::ARRAY";
 
 my $stream = TAPx::Parser::Iterator->new( \*DATA );
 ok my $parser = TAPx::Parser->new( { stream => $stream } ),
   '... and creating a streamed parser should succeed';
-isa_ok $parser, 'TAPx::Parser::Streamed', '... and the object it returns';
+isa_ok $parser, 'TAPx::Parser', '... and the object it returns';
 
 can_ok $parser, '_stream';
 is ref $parser->_stream, $ITER_FH,
