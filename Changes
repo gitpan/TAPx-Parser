@@ -2,10 +2,17 @@ Revision history for TAP-Parser
 
 Revision history for TAP-Parser
 
+0.41     12 December 2006
+         - Fixed (?) 10-regression.t test which failed on Windows.  Removed
+           the segfault test as it has no meaning on Windows.  Reported by
+           PSINNOTT <link@redbrick.dcu.ie> and fix recommended by Schwern
+           based on his Test::Harness experience.
+           http://rt.cpan.org/Ticket/Display.html?id=21624
+
 0.40     05 December 2006
          - Removed TAPx::Parser::Streamed and folded its functionality into
            TAPx::Parser.
-         - Fixed by where sometimes is_good_plan would return a false
+         - Fixed bug where sometimes is_good_plan() would return a false
            positive (exposed by refactoring).
          - A number of tiny performance enhancements.
 

@@ -4,7 +4,7 @@ $ENV{PATH} = '';
 unshift @INC, 't/lib';
 
 use strict;
-use Test::More 'no_plan'; # tests => 2613;
+use Test::More tests => 2567;
 use File::Spec;
 use Data::Dumper;
 
@@ -1881,41 +1881,6 @@ my %samples = (
         parse_errors  => [],
         'exit'        => 0,
         wait          => 0,
-    },
-    segfault => {
-        results       => [
-            {   is_plan       => TRUE,
-                raw           => '1..1',
-                tests_planned => TRUE,
-                passed        => TRUE,
-                is_ok         => TRUE,
-            },
-            {   actual_passed => TRUE,
-                is_actual_ok  => TRUE,
-                passed        => TRUE,
-                is_ok         => TRUE,
-                is_test       => TRUE,
-                has_skip      => FALSE,
-                has_todo      => FALSE,
-                number        => 1,
-                description   => '',
-                explanation   => '',
-            },
-        ],
-        plan          => '1..1',
-        passed        => [1],
-        actual_passed => [1],
-        failed        => [],
-        actual_failed => [],
-        todo          => [],
-        todo_failed   => [],
-        skipped       => [],
-        good_plan     => TRUE,
-        tests_planned => 1,
-        tests_run     => 1,
-        parse_errors  => [],
-        'exit' => 0,
-        wait   => NOT_ZERO,
     },
     shbang_misparse => {
         results => [

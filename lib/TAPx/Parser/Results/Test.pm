@@ -14,11 +14,11 @@ TAPx::Parser::Results::Test - Test result token.
 
 =head1 VERSION
 
-Version 0.40
+Version 0.41
 
 =cut
 
-$VERSION = '0.40';
+$VERSION = '0.41';
 
 =head1 DESCRIPTION
 

@@ -48,7 +48,6 @@ t/sample-tests/inc_taint
 t/sample-tests/no_nums
 t/sample-tests/no_output
 t/sample-tests/out_of_order
-t/sample-tests/segfault
 t/sample-tests/sequence_misparse
 t/sample-tests/shbang_misparse
 t/sample-tests/simple
