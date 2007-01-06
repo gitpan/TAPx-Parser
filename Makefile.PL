@@ -1,5 +1,8 @@
 use ExtUtils::MakeMaker qw/WriteMakefile prompt/;
 
+use strict;
+use warnings;
+
 my @program;
 if ( prompt( "Do you wish to install the 'runtests' utility?", "y" )
     =~ /^[Yy]/ )
@@ -15,5 +18,5 @@ WriteMakefile(
     },
     'INSTALLDIRS' => 'site',
     'PL_FILES'    => {},
-    @PROGRAM,
+    @program,
 );

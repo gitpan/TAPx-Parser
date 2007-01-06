@@ -1,8 +1,13 @@
+bin/runtests
 Build.PL
 Changes
-bin/runtests
+examples/my_execrc
 examples/README
 examples/t/10-stuff.t
+examples/t/ruby.t
+examples/tapx_harness_execrc
+examples/test_html.pl
+examples/test_urls.txt
 examples/tprove
 examples/tprove_color
 examples/tprove_gtk
@@ -53,6 +58,8 @@ t/sample-tests/inc_taint
 t/sample-tests/no_nums
 t/sample-tests/no_output
 t/sample-tests/out_of_order
+t/sample-tests/schwern
+t/sample-tests/segfault
 t/sample-tests/sequence_misparse
 t/sample-tests/shbang_misparse
 t/sample-tests/simple

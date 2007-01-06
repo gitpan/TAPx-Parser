@@ -15,11 +15,11 @@ TAPx::Parser - Parse L<TAP|Test::Harness::TAP> output
 
 =head1 VERSION
 
-Version 0.50_01
+Version 0.50_02
 
 =cut
 
-$VERSION = '0.50_01';
+$VERSION = '0.50_02';
 
 BEGIN {
     foreach my $method (
@@ -1250,6 +1250,8 @@ just words of encouragement have all been forthcoming.
 =item * Sean & Lil
 
 =item * Andreas J. Koenig
+
+=item * Florian Ragwitz
 
 =back
 

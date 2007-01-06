@@ -1,5 +1,11 @@
 Revision history for TAP-Parser
 
+0.50_02 06 January 2007
+    - Added some files I left out of the manifest (reported by Florian
+      Ragwitz).
+    - Added strict to Makefile.PL and changed @PROGRAM to @programx (reported
+      Florian Ragwitz).
+
 0.50_01 06 January 2007
     - Added a new example which shows to how test Perl, Ruby, and URLs all at
       the same time using 'execrc' files.

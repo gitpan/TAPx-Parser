@@ -12,11 +12,11 @@ TAPx::Parser::Results::Comment - Comment result token.
 
 =head1 VERSION
 
-Version 0.50_01
+Version 0.50_02
 
 =cut
 
-$VERSION = '0.50_01';
+$VERSION = '0.50_02';
 
 =head1 DESCRIPTION
 
