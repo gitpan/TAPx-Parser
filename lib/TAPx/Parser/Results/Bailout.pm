@@ -12,11 +12,11 @@ TAPx::Parser::Results::Bailout - Bailout result token.
 
 =head1 VERSION
 
-Version 0.41
+Version 0.50_01
 
 =cut
 
-$VERSION = '0.41';
+$VERSION = '0.50_01';
 
 =head1 DESCRIPTION
 
@@ -44,7 +44,7 @@ They keep me awake at night.
 
 =head2 Instance methods
 
-=head3 explanation 
+=head3 C<explanation>
 
   if ( $result->is_bailout ) {
       my $explanation = $result->explanation;

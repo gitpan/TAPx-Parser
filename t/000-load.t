@@ -1,6 +1,6 @@
 #!/usr/bin/perl -wT
 
-use Test::More tests => 22;
+use Test::More tests => 28;
 
 BEGIN {
     my @classes = qw(
@@ -14,7 +14,10 @@ BEGIN {
       TAPx::Parser::Results::Test
       TAPx::Parser::Results::Unknown
       TAPx::Parser::Results::Bailout
+      TAPx::Parser::Source
       TAPx::Parser::Source::Perl
+      TAPx::Harness
+      TAPx::Harness::Color
     );
 
     foreach my $class (@classes) {

@@ -9,10 +9,15 @@ my $builder = Module::Build->new(
     dist_author       => 'Curtis "Ovid" Poe <ovid@cpan.org>',
     dist_version_from => 'lib/TAPx/Parser.pm',
     requires          => {
-        'Test::More'          => 0,
+        'Test::More' => 0,
     },
     add_to_cleanup     => ['TAPx-Parser-*'],
-    create_makefile_pl => 'traditional',
 );
+
+if ( $builder->prompt( "Do you wish to install the 'runtests' utility?", "y" )
+    =~ /^[Yy]/ )
+{
+    $builder->script_files( ["bin/runtests"] );
+}
 
 $builder->create_build_script();

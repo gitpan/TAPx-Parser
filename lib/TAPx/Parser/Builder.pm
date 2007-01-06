@@ -8,11 +8,11 @@ TAPx::Parser::Builder - Make Test::Builder redirect STDERR to STDOUT
 
 =head1 VERSION
 
-Version 0.41
+Version 0.50_01
 
 =cut
 
-$VERSION = '0.41';
+$VERSION = '0.50_01';
 
 =head2 DESCRIPTION
 

@@ -4,6 +4,57 @@ The example programs are not designed to be truly comprehensive.  Instead,
 they're designed to show you how easy it is to write your own test harness for
 TAP using C<TAPx::Parser>.
 
+=head1 RUNNING TESTS IN MULTIPLE LANGUAGES
+
+If you have ruby installed in C</usr/bin/ruby>, and also have
+C<Test::WWW::Mechanize> installed, you can cd into C<examples/> (the directory
+where this README lives) and run the following command after installing the
+C<runtests> utility:
+
+ examples $ runtests --execrc my_execrc t -q - <test_urls.txt 
+ t/10-stuff..............Failed 1/6 tests
+         (less 2 skipped tests: 3 okay)
+         (1 test unexpectedly succeeded)
+ t/ruby..................ok   
+ http://www.google.com/....ok   
+ http://www.yahoo.com/.....ok   
+ 
+ Test Summary Report
+ -------------------
+ t/10-stuff.t          (Wstat: 256 Tests: 6 Failed: 1)
+   Failed tests:  2
+   TODO passed:   6
+   Tests skipped: 3-4
+ Files=4, Tests=10,  3 wallclock secs ( 0.92 cusr +  0.23 csys =  1.15 CPU)
+
+The C<my_exerc> is a file which tells the test harness how to execute any tests
+it encounters.
+
+The C<t> argument tells it to search in the C<t/> directory for any tests.
+One of the tests it finds is written in Ruby, but the C<my_execrc> file tells
+it how to run this test.  If you have Ruby installed but the test fails, try
+changing the path.  If you don't have Ruby installed, you can simply comment
+out that line in C<my_execrc>, but the test will fail.
+
+The C<-> tells C<runtests> to read from C<STDIN> and C<test_urls.txt> is
+merely a list of URLs we wish to test.
+
+See the documentation for C<runtests> and C<TAPx::Harness> for more
+information about how to use this.
+
+If you have C<Term::AnsiColor> installed, try running the following
+(experimental) command:
+
+ runtests --execrc my_execrc -vc t/ - < test_urls.txt
+
+The C<-v> and C<-c> switches tell the harness to be both verbose and to output
+results in color.
+
+=head1 CUSTOM TEST HARNESSES
+
+You should not run the 'tprove*' examples any more.  They work, but the new
+'runtests' utility makes them obsolete.
+
 =over 4
 
 =item * tprove

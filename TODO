@@ -1,7 +1,9 @@
 TODO:
 
+     - * Add 'run_with' key for source =>.  Value should be a sprintf format.
+       This should make runnings PUGs through TAPx::Parser trivial.  How do I
+       test if something is a valid format without executing it?
      - Unknown callback keys should be fatal.
-     - All boolean methods must start with is_ (Aristotle and Paul Johnson)
      - Run it against Perl's test suite (first prove, then tprove).
      - Run Perl::MinimumVersion over it
      - Comments and junk are also allowed *before* the plan.  Sigh.
@@ -13,8 +15,6 @@ TODO:
        support for subclassing.
      - Horrible idea:  have Mac's voice synthesis tell you when tests fail :)
      - Have tprove duplicate all of the functionality of prove.
-     - Allow description transformations to be applied.
-     - Figure out the namespace.
 
 QUESTIONS:
 

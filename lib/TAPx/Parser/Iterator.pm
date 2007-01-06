@@ -9,11 +9,11 @@ TAPx::Parser::Iterator - Internal TAPx::Parser Iterator
 
 =head1 VERSION
 
-Version 0.41
+Version 0.50_01
 
 =cut
 
-$VERSION = '0.41';
+$VERSION = '0.50_01';
 
 =head1 SYNOPSIS
 
@@ -54,18 +54,19 @@ Returns true if on or after the last line.  Must be called I<after> C<next()>.
 sub new {
     my ( $proto, $thing ) = @_;
 
-    my $self = {};
-    if ( ref $thing eq 'GLOB' ) {
+    my $ref = ref $thing;
+    if ( $ref eq 'GLOB' || $ref eq 'IO::Handle' ) {
+        # we may eventually allow a 'fast' switch which can read the entire
+        # stream into an array.  This seems to speed things up by 10 to 12
+        # per cent.  Should not be used with infinite streams.
         return TAPx::Parser::Iterator::FH->new($thing);
     }
-    elsif ( ref $thing eq 'ARRAY' ) {
+    elsif ( $ref eq 'ARRAY' ) {
         return TAPx::Parser::Iterator::ARRAY->new($thing);
     }
     else {
-        warn "Can't iterate with a ", ref $thing;
+        die "Can't iterate with a ", ref $thing;
     }
-
-    return $self;
 }
 
 eval { require POSIX; &POSIX::WEXITSTATUS(0) };
@@ -80,7 +81,7 @@ package TAPx::Parser::Iterator::FH;
 
 use vars qw($VERSION @ISA);
 @ISA     = 'TAPx::Parser::Iterator';
-$VERSION = '0.41';
+$VERSION = '0.50_01';
 
 sub new {
     my ( $class, $thing ) = @_;
@@ -103,7 +104,8 @@ sub next {
     my $fh   = $self->{fh};
 
     local $/ = "\n";
-    if ( defined ( my $line = $self->{next} ) ) {
+    my $line;
+    if ( defined( $line = $self->{next} ) ) {
         if ( defined( my $next = <$fh> ) ) {
             chomp( $self->{next} = $next );
             $self->{is_first} = 0;
@@ -111,20 +113,27 @@ sub next {
         else {
             $self->_finish;
         }
-        return $line;
     }
     else {
         $self->{is_first} = 1 unless $self->{is_last};
         local $^W;    # Don't want to chomp undef values
-        chomp( my $line = <$fh> );
+        chomp( $line = <$fh> );
         unless ( defined $line ) {
             $self->_finish;
         }
         else {
             chomp( $self->{next} = <$fh> );
         }
-        return $line;
     }
+
+    # vms nit:  When encountering 'not ok', vms often has the 'not' on a line
+    # by itself:
+    #   not
+    #   ok 1 - 'I hate VMS'
+    if ( defined $line && $line =~ /^\s*not\s*$/ ) {
+        $line .= ($self->next || '');
+    }
+    return $line;
 }
 
 sub _finish {
@@ -142,7 +151,7 @@ package TAPx::Parser::Iterator::ARRAY;
 
 use vars qw($VERSION @ISA);
 @ISA     = 'TAPx::Parser::Iterator';
-$VERSION = '0.41';
+$VERSION = '0.50_01';
 
 sub new {
     my ( $class, $thing ) = @_;
@@ -154,8 +163,8 @@ sub new {
     }, $class;
 }
 
-sub wait { shift->exit }
-sub exit { shift->is_last ? 0 : () }
+sub wait     { shift->exit }
+sub exit     { shift->is_last ? 0 : () }
 sub is_first { 1 == $_[0]->{idx} }
 sub is_last  { @{ $_[0]->{array} } <= $_[0]->{idx} }
 

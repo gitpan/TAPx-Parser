@@ -25,11 +25,11 @@ TAPx::Parser::Results - TAPx::Parser output
 
 =head1 VERSION
 
-Version 0.41
+Version 0.50_01
 
 =cut
 
-$VERSION = '0.41';
+$VERSION = '0.50_01';
 
 =head2 DESCRIPTION
 
@@ -76,7 +76,7 @@ sub new {
     Carp::croak("Could not determine class for\n$token");
 }
 
-=head3 Boolean methods
+=head2 Boolean methods
 
 The following methods all return a boolean value and are to be overridden in
 the appropriate subclass.
@@ -158,7 +158,7 @@ sub as_string { shift->{raw} }
 
 ##############################################################################
 
-=head3 is_ok
+=head3 C<is_ok>
 
   if ( $result->is_ok ) { ... }
 

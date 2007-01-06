@@ -14,11 +14,11 @@ TAPx::Parser::Results::Test - Test result token.
 
 =head1 VERSION
 
-Version 0.41
+Version 0.50_01
 
 =cut
 
-$VERSION = '0.41';
+$VERSION = '0.50_01';
 
 =head1 DESCRIPTION
 
@@ -84,7 +84,7 @@ sub description { shift->{description} }
 
 ##############################################################################
 
-=head3 directive
+=head3 C<directive>
 
   my $directive = $result->directive;
 
@@ -97,7 +97,7 @@ sub directive   { shift->{directive} }
 
 ##############################################################################
 
-=head3 explanation 
+=head3 C<explanation>
 
   my $explanation = $result->explanation;
 
@@ -114,18 +114,22 @@ sub explanation { shift->{explanation} }
 
 ##############################################################################
 
-=head3 is_ok
+=head3 C<is_ok>
 
   if ( $result->is_ok ) { ... }
 
 Returns a boolean value indicating whether or not the test passed.  Remember
 that for TODO tests, the test always passes.
 
+If the test is unplanned, this method will always return false.  See
+C<is_unplanned>.
+
 =cut
 
 sub is_ok {
     my $self = shift;
 
+    return if $self->is_unplanned;
     # TODO directives reverse the sense of a test.
     return $self->has_todo ? 1 : $self->ok !~ /not/;
 }
@@ -205,7 +209,7 @@ sub has_todo { 'TODO' eq shift->{directive} }
 
 ##############################################################################
 
-=head3 as_string
+=head3 C<as_string>
 
   print $result->as_string;
 
@@ -231,6 +235,36 @@ sub as_string {
         $string .= " # $directive $explanation";
     }
     return $string;
+}
+
+##############################################################################
+
+=head3 C<is_unplanned>
+
+  if ( $test->is_unplanned ) { ... }
+  $test->is_unplanned(1);
+
+If a test number is greater than the number of planned tests, this method will
+return true.  Unplanned tests will I<always> return false for C<is_ok>,
+regardless of whether or not the test C<has_todo>.
+
+Note that if tests have a trailing plan, it is not possible to set this
+property for unplanned tests as we do not know it's unplanned until the plan
+is reached:
+
+  print <<'END';
+  ok 1
+  ok 2
+  1..1
+  END
+
+=cut
+
+sub is_unplanned {
+    my $self = shift;
+    return $self->{unplanned} unless @_;
+    $self->{unplanned} = !!shift;
+    return $self;
 }
 
 1;

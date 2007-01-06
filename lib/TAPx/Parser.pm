@@ -5,20 +5,21 @@ use vars qw($VERSION);
 
 use TAPx::Parser::Grammar;
 use TAPx::Parser::Results;
+use TAPx::Parser::Source;
 use TAPx::Parser::Source::Perl;
 use TAPx::Parser::Iterator;
 
 =head1 NAME
 
-TAPx::Parser - Parse TAP output
+TAPx::Parser - Parse L<TAP|Test::Harness::TAP> output
 
 =head1 VERSION
 
-Version 0.41
+Version 0.50_01
 
 =cut
 
-$VERSION = '0.41';
+$VERSION = '0.50_01';
 
 BEGIN {
     foreach my $method (
@@ -30,6 +31,7 @@ BEGIN {
         _grammar
         _end_plan_error
         _plan_error_found
+        exec
         exit
         is_good_plan
         plan
@@ -40,12 +42,14 @@ BEGIN {
       )
     {
         no strict 'refs';
+
         # another tiny performance hack
         if ( $method =~ /^_/ ) {
             *$method = sub {
                 my $self = shift;
                 return $self->{$method} unless @_;
-                unless ( ( ref $self ) =~ /^TAPx::Parser/ ) {    # trusted methods
+                unless ( ( ref $self ) =~ /^TAPx::Parser/ )
+                {    # trusted methods
                     $self->_croak("$method() may not be set externally");
                 }
                 $self->{$method} = shift;
@@ -124,11 +128,15 @@ far the preferred method of using the parser.
 
 The value should be the complete TAP output.
 
-=item * C<stream>
+=item * C<exec>
 
-The value should be a code ref.  Every every time the reference is called, it
-should return a chunk of TAP.  When no more tap is available, it should return
-C<undef>.
+If passed a string, will attempt to create the iterator by passing a
+C<TAPx::Parser::Source> object to C<TAPx::Parser::Iterator>, using the string
+as the thing to be create via a piped open:
+
+ exec => '/usr/bin/ruby t/my_test.rb'
+
+Note that C<source> and C<exec> are mutually exclusive.
 
 =back
 
@@ -151,10 +159,9 @@ with the result as the argument if the C<run> method is used:
  
  my $aggregator = TAPx::Parser::Aggregator->new;
  foreach my $file ( @test_files ) {
-     my $stream = TAPx::Parser::Source::Perl->new($file);
      my $parser = TAPx::Parser->new(
          {
-             stream    => $stream,
+             source    => $file,
              callbacks => \%callbacks,
          }
      );
@@ -188,7 +195,7 @@ sub new {
 
 =head3 C<next>
 
-  my $parser = TAPx::Parser->new( { stream => $stream } );
+  my $parser = TAPx::Parser->new( { source => $file } );
   while ( my $result = $parser->next ) {
       print $result->as_string, "\n";
   }
@@ -212,6 +219,12 @@ sub next {
     my $token;
     if (@tokens) {
         $token = TAPx::Parser::Results->new(@tokens);
+    }
+    if ( $token && $token->is_test ) {
+        my $count = $self->tests_planned;
+        if ( defined $count && ( $token->number || 0 ) > $count ) {
+            $token->is_unplanned(1);
+        }
     }
 
     # must set _end_tap first or else _validate chokes on ending plans
@@ -286,12 +299,29 @@ sub run {
         my $stream = delete $arg_for->{stream};
         my $tap    = delete $arg_for->{tap};
         my $source = delete $arg_for->{source};
+        my $exec   = delete $arg_for->{exec};
+        my $merge  = delete $arg_for->{merge};
         if ( 1 < grep {defined} $stream, $tap, $source ) {
             $self->_croak(
                 "You may only choose one of 'stream', 'tap', or'source'");
         }
+        if ( $source && $exec ) {
+            $self->_croak(
+                '"source" and "exec" are mutually exclusive options');
+        }
         if ($tap) {
             $stream = TAPx::Parser::Iterator->new( [ split "\n" => $tap ] );
+        }
+        elsif ($exec) {
+            my $source = TAPx::Parser::Source->new;
+            $source->source($exec);
+            $stream = $source->get_stream;
+            if ( defined $stream->exit ) {
+                $self->exit( $stream->exit );
+            }
+            if ( defined $stream->wait ) {
+                $self->wait( $stream->wait );
+            }
         }
         elsif ($source) {
             if ( ref $source ) {
@@ -301,16 +331,16 @@ sub run {
 
                 # eventually we'll try to open this up to other sources
                 my $perl = TAPx::Parser::Source::Perl->new;
+                $perl->synch_output($merge);
                 $perl->switches( $arg_for->{switches} )
                   if $arg_for->{switches};
-                $stream = $perl->filename($source)->get_stream;
+                $stream = $perl->source($source)->get_stream;
                 if ( defined $stream->exit ) {
                     $self->exit( $stream->exit );
                 }
                 if ( defined $stream->wait ) {
                     $self->wait( $stream->wait );
                 }
-                $stream = $stream;
             }
             else {
                 $self->_croak("Cannot determine source for $source");
@@ -597,6 +627,15 @@ of its TODO status.
 B<Note:>  this was formerly C<actual_passed>.  The latter method is deprecated
 and will issue a warning.
 
+=head3 C<is_unplanned>
+
+  if ( $test->is_unplanned ) { ... }
+
+If a test number is greater than the number of planned tests, this method will
+return true.  Unplanned tests will I<always> return false for C<is_ok>,
+regardless of whether or not the test C<has_todo> (see
+L<TAPx::Parser::Results::Test> for more information about this).
+
 =head3 C<has_skip>
 
   if ( $result->has_skip ) { ... }
@@ -750,14 +789,14 @@ Returns the number of tests which actually were run.  Hopefully this will
 match the number of C<< $parser->tests_planned >>.
 
 
-=head3 exit
+=head3 C<exit>
 
   $parser->exit;
 
 Once the parser is done, this will return the exit status.  If the parser ran
 an executable, it returns the exit status of the executable.
 
-=head3 wait
+=head3 C<wait>
 
   $parser->wait;
 
@@ -1009,10 +1048,9 @@ anonymous subroutine) which is invoked with the parser result as its argument.
  
  my $aggregator = TAPx::Parser::Aggregator->new;
  foreach my $file ( @test_files ) {
-     my $stream = TAPx::Parser::Source::Perl->new($file);
      my $parser = TAPx::Parser->new(
          {
-             stream    => $stream,
+             source    => $file,
              callbacks => \%callbacks,
          }
      );
@@ -1092,8 +1130,6 @@ See C<examples/tprove_color> for an example of this.
 
 =back
 
-##############################################################################
-
 =head1 TAP GRAMMAR
 
 B<NOTE:>  This grammar is slightly out of date.  There's still some discussion
@@ -1155,7 +1191,7 @@ A formal grammar would look similar to the following:
 =head1 BACKWARDS COMPATABILITY
 
 The Perl-QA list attempted to ensure backwards compatability with
-L<Test::Harnes>.  However, there are some minor differences.
+L<Test::Harness>.  However, there are some minor differences.
 
 =head2 Differences
 
@@ -1179,35 +1215,6 @@ suites very fragile.  Instead, the following should be used:
  1..2
  ok 1 - We have liftoff
  not ok 2 - Anti-gravity device activated # TODO
-
-
-=item * Unexpectedly succeeding TODO tests now fail
-
-At least as late as C<Test::Harness> 2.63, the following would be reported as
-a I<passing> test:
-
- 1..2
- ok 1 - We have liftoff
- ok 2 - Anti-gravity device activated # TODO
-
-However, this meant that TODOs were innappropriately sprinkled through the
-code and C<Test::Harness> would simply list that one test had unexpectedly
-succeeded and the poor test author would have to hunt through his test output
-to find out which one.  This is particularly problematic when working in large
-teams and finding out that another programmer has already implemented a
-feature elsewhere and your tests may or may not be correct.
-
-Further, with C<TAPx::Parser>, a primitive harness which only reports failing
-tests should look like the following, even though it's wrong:
-
- my $parser = TAPx::Parser->new( { source => $test_file } );
- while ( my $result = $parser->next ) {
-     print $result->as_string if ! $result->is_ok;
- }
-
-That works, but if we had stuck with the old C<Test::Harness> behavior, it
-would not have reported the unexpectedly succeeding tests unless the harness
-author remembered to test for C<< $result->todo_failed >>.
 
 =back
 
