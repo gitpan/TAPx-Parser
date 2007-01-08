@@ -17,11 +17,11 @@ TAPx::Parser::Source::Perl - Stream Perl output
 
 =head1 VERSION
 
-Version 0.50_02
+Version 0.50_03
 
 =cut
 
-$VERSION = '0.50_02';
+$VERSION = '0.50_03';
 
 =head1 DESCRIPTION
 
@@ -36,8 +36,6 @@ more methods.
  use TAPx::Parser::Source::Perl;
  my $perl   = TAPx::Parser::Source::Perl->new;
  my $stream = $perl->source($filename)->get_stream;
-
-##############################################################################
 
 =head1 METHODS
 
@@ -69,46 +67,6 @@ sub source {
         $self->_croak("Cannot find ($filename)");
     }
     $self->{source} = $filename;
-    return $self;
-}
-
-##############################################################################
-
-=head3 C<synch_output>
-
-  $perl->synch_output(1);
-  my $synched = $perl->synch_output;
-
-B<Warning>!  This feature is highly experimental.  Due to the way that
-C<Test::Builder> works, C<STDOUT> and C<STDERR> are not always in synch.
-Passing this method a true value will override the normal settings of
-C<Test::Builder> and force regular output and failure output to go to the same
-filehandle.  This means that you will no longer have to worry about failure
-messages being out of synch with your normal test output.
-
-Unfortunately, due to a bug I have not been able to track down, that causes
-nicely formatted diagnostic messages like this:
-
- #   in examples/t/10-stuff.t at line 8.
- #     Structures begin differing at:
- #          $got->[0] = '2'
- #     $expected->[0] = '3'
-
-To appear like this:
-
- # in examples/t/10-stuff.t at line 8.
- # Structures begin differing at:
- # $got->[0] = '2'
- # $expected->[0] = '3'
-
-Patches are I<extremely> welcome.
-
-=cut
-
-sub synch_output {
-    my $self = shift;
-    return $self->{STDERR_STDOUT_SYNCHED} unless @_;
-    $self->{STDERR_STDOUT_SYNCHED} = shift;
     return $self;
 }
 
@@ -159,10 +117,6 @@ sub _switches {
     my @switches = (
          $self->switches,
     );
-
-    # we may use this again if IPC::Open3 fails
-    #push @switches => qw(-MTest::Builder -MTAPx::Parser::Builder)
-    #    if $self->synch_output;
 
     local *TEST;
     open( TEST, $file ) or print "can't open $file. $!\n";

@@ -14,11 +14,11 @@ TAPx::Parser::Results::Test - Test result token.
 
 =head1 VERSION
 
-Version 0.50_02
+Version 0.50_03
 
 =cut
 
-$VERSION = '0.50_02';
+$VERSION = '0.50_03';
 
 =head1 DESCRIPTION
 
@@ -162,9 +162,9 @@ sub actual_passed {
 
 ##############################################################################
 
-=head3 C<todo_failed>
+=head3 C<todo_passed>
 
-  if ( $test->todo_failed ) {
+  if ( $test->todo_passed ) {
      # test unexpectedly succeeded
   }
 
@@ -176,9 +176,25 @@ This is used to track which tests unexpectedly succeeded.
 
 =cut
 
-sub todo_failed {
+sub todo_passed {
     my $self = shift;
     return $self->has_todo && $self->is_actual_ok;
+}
+
+##############################################################################
+
+=head3 C<todo_failed>
+
+  # deprecated in favor of 'todo_passed'.  This method was horribly misnamed.
+
+This was a badly misnamed method.  It indicates which TODO tests unexpectedly
+succeeded.  Will now issue a warning and call C<todo_passed>.
+
+=cut
+
+sub todo_failed {
+    warn '"todo_failed" is deprecated.  Please use "todo_passed".  See the docs.';
+    goto &todo_passed;
 }
 
 ##############################################################################

@@ -1,9 +1,28 @@
 Revision history for TAP-Parser
 
+0.05_03 08 January 2007
+
+    - Fixed bug where '-q' or '-Q' with colored tests weren't suppressing all
+      information.
+    - Fixed an annoying MANIFEST nit.
+    - Made '-h' for runtests now report help.  Using a new harness requires
+      the full --harness switch.
+    - Added 'problems' method to TAPx::Parser and TAPx::Parser::Aggregator.
+    - Deprecatd 'todo_failed' in favor of 'todo_passed'
+    - Add -I switch to runtests.
+    - Fixed runtests doc nit (smylers)
+    - Removed TAPx::Parser::Builder.
+    - A few more POD nits taken care of.
+    - Completely removed all traces of C<--merge> as IPC::Open3 seems to be
+      working.
+    - Moved the tprove* examples to examples/bin in hopes of them no longer
+      showing up in CPAN's docs.
+    - Made the 'unexpectedly succeeded' message clearer (Adam Kennedy)
+
 0.50_02 06 January 2007
     - Added some files I left out of the manifest (reported by Florian
       Ragwitz).
-    - Added strict to Makefile.PL and changed @PROGRAM to @programx (reported
+    - Added strict to Makefile.PL and changed @PROGRAM to @program (reported
       Florian Ragwitz).
 
 0.50_01 06 January 2007

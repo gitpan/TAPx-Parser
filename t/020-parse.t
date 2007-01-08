@@ -203,7 +203,7 @@ is $test->raw, 'ok 5 # skip we have no description',
 
 my $bonus = shift @results;
 isa_ok $bonus, $TEST;
-can_ok $bonus, 'todo_failed';
+can_ok $bonus, 'todo_passed';
 is $bonus->type, 'test', 'TODO tests should parse correctly';
 ok $bonus->is_test, '... and it should identify itself as a test';
 is $bonus->ok,      'ok', '... and it should have the correct ok()';
@@ -222,14 +222,14 @@ is $bonus->as_string, 'ok 6 - you shall not pass! # TODO should have failed',
   '... and its string representation should be correct';
 is $bonus->raw, 'ok 6 - you shall not pass! # TODO should have failed',
   '... and raw() should return the original line';
-ok $bonus->todo_failed,
+ok $bonus->todo_passed,
   '... todo_bonus() should pass for TODO tests which unexpectedly succeed';
 
 # not ok 7 - Gandalf wins.  Game over.  # TODO 'bout time!
 
 my $passed = shift @results;
 isa_ok $passed, $TEST;
-can_ok $passed, 'todo_failed';
+can_ok $passed, 'todo_passed';
 is $passed->type, 'test', 'TODO tests should parse correctly';
 ok $passed->is_test, '... and it should identify itself as a test';
 is $passed->ok,      'not ok', '... and it should have the correct ok()';
@@ -249,8 +249,8 @@ is $passed->as_string,
   '... and its string representation should be correct';
 is $passed->raw, "not ok 7 - Gandalf wins.  Game over.  # TODO 'bout time!",
   '... and raw() should return the original line';
-ok !$passed->todo_failed,
-  '... todo_failed() should not pass for TODO tests which failed';
+ok !$passed->todo_passed,
+  '... todo_passed() should not pass for TODO tests which failed';
 
 # test parse results
 
@@ -295,10 +295,10 @@ is $parser->plan,          '1..7', '... and we should have the correct plan';
 is $parser->tests_planned, 7,      '... and the correct number of tests';
 
 # "Unexpectedly succeeded"
-can_ok $parser, 'todo_failed';
-is scalar $parser->todo_failed, 1,
+can_ok $parser, 'todo_passed';
+is scalar $parser->todo_passed, 1,
   '... and it should report the number of tests which unexpectedly succeeded';
-is_deeply [ $parser->todo_failed ], [6],
+is_deeply [ $parser->todo_passed ], [6],
   '... or *which* tests unexpectedly succeeded';
 
 #

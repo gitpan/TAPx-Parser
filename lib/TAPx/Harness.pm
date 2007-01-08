@@ -18,11 +18,11 @@ TAPx::Harness - Run Perl test scripts with statistics
 
 =head1 VERSION
 
-Version 0.50_02
+Version 0.50_03
 
 =cut
 
-$VERSION = '0.50_02';
+$VERSION = '0.50_03';
 
 =head1 DESCRIPTION
 
@@ -70,7 +70,6 @@ BEGIN {
         },
         verbose  => sub { shift; shift },
         failures => sub { shift; shift },
-        merge    => sub { shift; shift },
         errors   => sub { shift; shift },
         quiet    => sub {
             my $self = shift;
@@ -149,12 +148,6 @@ Print individual test results to STDOUT.
 
 Only show test failures (this is a no-op if C<verbose> is selected).
 
-=item * C<merge>
-
-Merges C<STDOUT> and C<STDERR>.  This is a highly experimental feature.  See
-C<TAPx::Parser::Source::Perl::synch_output> for more information.  Only works
-for tests using C<Test::Builder>.
-
 =item * C<lib>
 
 Accepts a scalar value or array ref of scalar values indicating which paths to
@@ -174,10 +167,6 @@ Suppress some test output (mostly failures while tests are running).
 =item * C<really_quiet>
 
 Suppress everything but the tests summary.
-
-B<Note>:  if the C<merge> option does not have a true value, failed test
-information and diagnostics may still be output with C<really_quiet> because
-of how C<Test::Builder> works (assumes your tests are using C<Test::Builder>.
 
 =item * C<exec>
 
@@ -309,7 +298,7 @@ sub runtests {
 
         my $parser = $self->_runtest( "$name$periods", $test );
         $aggregate->add( $test, $parser );
-        if ( !$parser->failed && !$parser->parse_errors ) {
+        if ( !$parser->problems ) {
             $self->output("ok\n") unless $really_quiet;
         }
         else {
@@ -389,11 +378,7 @@ sub summary {
     if ( $total == $passed ) {
         $self->output("All tests successful.\n");
     }
-    if (   $total != $passed
-        or $aggregate->todo_failed,
-        or $aggregate->skipped,
-        or $aggregate->parse_errors )
-    {
+    if ( $total != $passed or $aggregate->problems or $aggregate->skipped ) {
         $self->output("\nTest Summary Report");
         $self->output("\n-------------------\n");
         foreach my $test (@$tests) {
@@ -402,23 +387,21 @@ sub summary {
             $self->_curr_test($test);
             $self->_curr_parser($parser);
             $self->_output_summary_failure( 'failed',       "  Failed tests:  ");
-            $self->_output_summary_failure( 'todo_failed',  "  TODO passed:   ");
+            $self->_output_summary_failure( 'todo_passed',  "  TODO passed:   ");
             $self->_output_summary_failure( 'skipped',      "  Tests skipped: " );
-            if ( $parser->parse_errors ) {
+            if ( my @errors = $parser->parse_errors ) {
                 $self->_summary_test_header($test, $parser);
-                if ( $self->errors ) {
-                    if ( my @errors = $parser->parse_errors ) {
-                        $self->output(
-                            sprintf "  Parse errors: %s\n", shift @errors
-                        );
-                        foreach my $error (@errors) {
-                            my $spaces = ' ' x 16;
-                            $self->output("$spaces$error\n");
-                        }
+                if ( $self->errors || 1 == @errors ) {
+                    $self->failure_output(
+                        sprintf "  Parse errors: %s\n", shift @errors
+                    );
+                    foreach my $error (@errors) {
+                        my $spaces = ' ' x 16;
+                        $self->failure_output("$spaces$error\n");
                     }
                 }
                 else {
-                    $self->output("  Errors encountered while parsing tap\n");
+                    $self->failure_output("  Errors encountered while parsing tap\n");
                 }
             }
         }
@@ -429,16 +412,19 @@ sub summary {
 
 sub _output_summary_failure {
     my ( $self, $method, $name ) = @_;
+
+    # ugly hack.  Must rethink this :(
+    my $output = $method eq 'failed' ? 'failure_output' : 'output';
     my $test   = $self->_curr_test;
     my $parser = $self->_curr_parser;
     if ( $parser->$method ) {
         $self->_summary_test_header($test, $parser);
-        $self->output($name);
+        $self->$output($name);
         my @results = $self->balanced_range( 40, $parser->$method );
-        $self->output(sprintf "%s\n" => shift @results);
+        $self->$output(sprintf "%s\n" => shift @results);
         my $spaces = ' ' x 16;
         while (@results) {
-            $self->output(
+            $self->$output(
                 sprintf "$spaces%s\n" => shift @results
             );
         }
@@ -450,7 +436,8 @@ sub _summary_test_header {
     return if $self->_printed_summary_header;
     my $spaces = ' ' x ($self->_longest - length $test);
     $spaces = ' ' unless $spaces;
-    $self->output(
+    my $output = $self->_get_output_method($parser);
+    $self->$output(
         sprintf "$test$spaces(Wstat: %d Tests: %d Failed: %d)\n", 
         $parser->wait,
         $parser->tests_run, 
@@ -473,6 +460,21 @@ like to redirect output somewhere else, just override this method.
 sub output {
     my $self = shift;
     print @_;
+}
+
+##############################################################################
+
+=head3 C<failure_output>
+
+  $harness->failure_output(@list_of_strings_to_output);
+
+Identical to C<output>, this method is called for any output which represents
+a failure.
+
+=cut
+
+sub failure_output {
+    shift->output(@_);
 }
 
 ##############################################################################
@@ -571,16 +573,19 @@ sub output_test_failure {
     my $passed  = $parser->passed;
     my $failed  = $parser->failed;
     my $flist   = join ", " => $self->range( $parser->failed );
-    $self->output("Failed $failed/$total tests");
+    $self->failure_output("Failed $failed/$total tests");
+    if ( !$total ) {
+        $self->failure_output("\nNo test run!");
+    }
 
     if ( my $skipped = $parser->skipped ) {
         $passed -= $skipped;
         my $test = $skipped > 1 ? 'tests' : 'test';
         $self->output("\n\t(less $skipped skipped $test: $passed okay)");
     }
-    if ( my $failed = $parser->todo_failed ) {
+    if ( my $failed = $parser->todo_passed ) {
         my $test = $failed > 1 ? 'tests' : 'test';
-        $self->output("\n\t($failed $test unexpectedly succeeded)");
+        $self->output("\n\t($failed TODO $test unexpectedly succeeded)");
     }
     $self->output("\n");
 }
@@ -597,7 +602,6 @@ sub _runtest {
     my @switches = $self->lib if $self->lib;
     push @switches => $self->switches if $self->switches;
     $args{switches} = join ' ' => @switches;
-    $args{merge} = $self->merge if $self->merge;
 
     {
         if ( my $exec = $execrc->{$test} || $self->exec ) {
@@ -609,9 +613,11 @@ sub _runtest {
 
     my $plan = '';
     $self->_newline_printed(0);
+    my $output = 'output';
     while ( defined( my $result = $parser->next ) ) {
+        $output = $self->_get_output_method($parser);
         if ( $result->is_bailout ) {
-            $self->output(
+            $self->failure_output(
                 "Bailout called.  Further testing stopped:  "
                 . $result->explanation . "\n"
             );
@@ -621,7 +627,7 @@ sub _runtest {
             $plan = '/' . ( $parser->tests_planned || 0 ) . ' ';
         }
         if ( $show_count && $result->is_test ) {
-            $self->output("\r$leader" . $result->number . $plan)
+            $self->$output("\r$leader" . $result->number . $plan)
               unless $really_quiet;
             $self->_newline_printed(0);
         }
@@ -631,7 +637,7 @@ sub _runtest {
         my $spaces = ' ' x (
             1 + length($leader) + length($plan) + length( $parser->tests_run )
         );
-        $self->output("\r$spaces\r$leader") unless $really_quiet;
+        $self->$output("\r$spaces\r$leader") unless $really_quiet;
     }
     return $parser;
 }
@@ -648,10 +654,17 @@ sub _process {
     }
 }
 
+sub _get_output_method {
+    my ( $self, $parser ) = @_;
+    return $parser->problems ? 'failure_output' : 'output';
+}
+
 sub _should_display {
     my ( $self, $result ) = @_;
+    return unless -t STDOUT;
+    return if $self->really_quiet;
     return $self->verbose && !$self->failures
-      || $result->is_comment
+      || ($result->is_comment && !$self->quiet)
       || $self->_show_failure($result);
 }
 

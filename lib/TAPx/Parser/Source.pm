@@ -21,11 +21,11 @@ TAPx::Parser::Source - Stream output from some source
 
 =head1 VERSION
 
-Version 0.50_02
+Version 0.50_03
 
 =cut
 
-$VERSION = '0.50_02';
+$VERSION = '0.50_03';
 
 =head1 DESCRIPTION
 
@@ -36,8 +36,6 @@ Takes a command and hopefully returns a stream from it.
  use TAPx::Parser::Source;
  my $source = TAPx::Parser::Source->new;
  my $stream = $source->source('/usr/bin/ruby mytest.rb')->get_stream;
-
-##############################################################################
 
 =head1 METHODS
 

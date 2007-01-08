@@ -93,10 +93,10 @@ is $agg->parse_errors, 0, '... and the correct number of parse errors';
 is_deeply [ $agg->parse_errors ], [],
   '... and be able to get their descriptions';
 
-can_ok $agg, 'todo_failed';
-is $agg->todo_failed, 1,
+can_ok $agg, 'todo_passed';
+is $agg->todo_passed, 1,
   '... and the correct number of unexpectedly succeeded tests';
-is_deeply [ $agg->todo_failed ], [qw(tap2)],
+is_deeply [ $agg->todo_passed ], [qw(tap2)],
   '... and be able to get their descriptions';
 
 can_ok $agg, 'total';
@@ -140,8 +140,8 @@ is $parser->plan,          '1..5', '... and we should have the correct plan';
 is $parser->tests_planned, 5,      '... and the correct number of tests';
 
 # "Unexpectedly succeeded"
-can_ok $parser, 'todo_failed';
-is scalar $parser->todo_failed, 1,
+can_ok $parser, 'todo_passed';
+is scalar $parser->todo_passed, 1,
   '... and it should report the number of tests which unexpectedly succeeded';
-is_deeply [ $parser->todo_failed ], [6],
+is_deeply [ $parser->todo_passed ], [6],
   '... or *which* tests unexpectedly succeeded';

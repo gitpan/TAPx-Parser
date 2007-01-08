@@ -10,6 +10,7 @@ my $builder = Module::Build->new(
     dist_version_from => 'lib/TAPx/Parser.pm',
     requires          => {
         'Test::More' => 0,
+        'Pod::Usage' => 0,   # for 'runtests'
     },
     add_to_cleanup     => ['TAPx-Parser-*'],
 );

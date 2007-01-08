@@ -21,13 +21,16 @@ TAPx::Harness::Color - Run Perl test scripts with color
 
 =head1 VERSION
 
-Version 0.50_02
+Version 0.50_03
 
 =cut
 
-$VERSION = '0.50_02';
+$VERSION = '0.50_03';
 
 =head1 DESCRIPTION
+
+Note that this harness is I<experimental>.  You may not like the colors I've
+chosen and I haven't yet provided an easy way to override them.
 
 This test harness is the same as C<TAPx::Harness>, but test results are output
 in color.  Passing tests are printed in green.  Failing tests are in red.
@@ -68,6 +71,24 @@ sub new {
         return TAPx::Harness->new(@_);
     }
     return $class->SUPER::new(@_);
+}
+
+##############################################################################
+
+=head3 C<failure_output>
+
+  $harness->failure_output(@list_of_strings_to_output);
+
+Overrides L<TAPx::Harness> C<failure_output> to output failure information in
+red.
+
+=cut
+
+sub failure_output {
+    my $self = shift;
+    $self->output(color 'red');
+    $self->output(@_);
+    $self->output( color 'reset' );
 }
 
 sub _process {

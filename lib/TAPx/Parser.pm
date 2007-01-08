@@ -15,11 +15,11 @@ TAPx::Parser - Parse L<TAP|Test::Harness::TAP> output
 
 =head1 VERSION
 
-Version 0.50_02
+Version 0.50_03
 
 =cut
 
-$VERSION = '0.50_02';
+$VERSION = '0.50_03';
 
 BEGIN {
     foreach my $method (
@@ -286,7 +286,7 @@ sub run {
         failed        => [],    #
         actual_failed => [],    # how many tests really failed
         actual_passed => [],    # how many tests really passed
-        todo_failed   => [],    # tests which unexpectedly succeed
+        todo_passed   => [],    # tests which unexpectedly succeed
         parse_errors  => [],    # perfect TAP should have none
     );
 
@@ -329,9 +329,7 @@ sub run {
             }
             elsif ( -e $source ) {
 
-                # eventually we'll try to open this up to other sources
                 my $perl = TAPx::Parser::Source::Perl->new;
-                $perl->synch_output($merge);
                 $perl->switches( $arg_for->{switches} )
                   if $arg_for->{switches};
                 $stream = $perl->source($source)->get_stream;
@@ -735,19 +733,35 @@ This method lets you know which (or how many) tests had TODO directives.
 
 sub todo { @{ shift->{todo} } }
 
-=head3 C<todo_failed>
+=head3 C<todo_passed>
 
  # the test numbers which unexpectedly succeeded
- my @todo_failed = $parser->todo_failed;
+ my @todo_passed = $parser->todo_passed;
  # the number of tests which unexpectedly succeeded 
- my $todo_failed = $parser->todo_failed;
+ my $todo_passed = $parser->todo_passed;
 
 This method lets you know which (or how many) tests actually passed but were
 declared as "TODO" tests.
 
 =cut
 
-sub todo_failed { @{ shift->{todo_failed} } }
+sub todo_passed { @{ shift->{todo_passed} } }
+
+##############################################################################
+
+=head3 C<todo_failed>
+
+  # deprecated in favor of 'todo_passed'.  This method was horribly misnamed.
+
+This was a badly misnamed method.  It indicates which TODO tests unexpectedly
+succeeded.  Will now issue a warning and call C<todo_passed>.
+
+=cut
+
+sub todo_failed {
+    warn '"todo_failed" is deprecated.  Please use "todo_passed".  See the docs.';
+    goto &todo_passed;
+}
 
 =head3 C<skipped>
 
@@ -759,6 +773,24 @@ This method lets you know which (or how many) tests had SKIP directives.
 =cut
 
 sub skipped { @{ shift->{skipped} } }
+
+##############################################################################
+
+=head3 C<problems>
+
+  if ( $parser->problems ) {
+      ...
+  }
+
+This is a 'catch-all' method which returns true if any tests have currently
+failed, any TODO tests unexpectedly succeeded, or any parse errors.
+
+=cut
+
+sub problems {
+    my $self = shift;
+    return $self->failed || $self->todo_passed || $self->parse_errors;
+}
 
 ##############################################################################
 
@@ -878,7 +910,7 @@ sub _aggregate_results {
     my $num = $test->number;
 
     push @{ $self->{todo} }          => $num if $test->has_todo;
-    push @{ $self->{todo_failed} }   => $num if $test->todo_failed;
+    push @{ $self->{todo_passed} }   => $num if $test->todo_passed;
     push @{ $self->{passed} }        => $num if $test->is_ok;
     push @{ $self->{actual_passed} } => $num if $test->is_actual_ok;
     push @{ $self->{skipped} }       => $num if $test->has_skip;
@@ -1206,7 +1238,7 @@ the plan:
  ok 1 - We have liftoff
  not ok 2 - Anti-gravity device activated
 
-Under C<Test::Harness>, test number 2 would I<pass> because it was listed as a
+Under L<Test::Harness>, test number 2 would I<pass> because it was listed as a
 TODO test on the plan line.  However, we are not aware of anyone actually
 using this feature and hard-coding test numbers is discouraged because it's
 very easy to add a test and break the test number sequence.  This makes test
@@ -1215,6 +1247,20 @@ suites very fragile.  Instead, the following should be used:
  1..2
  ok 1 - We have liftoff
  not ok 2 - Anti-gravity device activated # TODO
+
+=item * 'Missing' tests
+
+It rarely happens, but sometimes a harness might encounter 'missing tests:
+
+ ok 1
+ ok 2
+ ok 15
+ ok 16
+ ok 17
+
+L<Test::Harness> would report tests 3-14 as having failed.  For the
+C<TAPx::Parser>, these tests are not considered failed because they've never
+run.  They're reported as parse failures (tests out of sequence).
 
 =back
 
@@ -1260,6 +1306,15 @@ just words of encouragement have all been forthcoming.
 Curtis "Ovid" Poe, C<< <ovid@cpan.org> >>
 
 =head1 BUGS
+
+=over 4
+
+=item * Exit status
+
+Currently, C<exit> codes are not being reported correctly due to the use of
+C<IPC::Open3> to synchronize STDERR and STDOUT.  Patches welcome!
+
+=back
 
 Please report any bugs or feature requests to
 C<bug-tapx-parser@rt.cpan.org>, or through the web interface at

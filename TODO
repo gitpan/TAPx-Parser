@@ -1,23 +1,18 @@
 TODO:
 
-     - * Add 'run_with' key for source =>.  Value should be a sprintf format.
-       This should make runnings PUGs through TAPx::Parser trivial.  How do I
-       test if something is a valid format without executing it?
-     - Unknown callback keys should be fatal.
-     - Run it against Perl's test suite (first prove, then tprove).
-     - Run Perl::MinimumVersion over it
-     - Comments and junk are also allowed *before* the plan.  Sigh.
-     - Currently the error messages are not quite as helpful as they could be.
-       They could use line and test numbers.
-     - Identify junk lines by number.
-     - The 'result' objects are currently blessing hashrefs.  This is bad.
-       Instead, they should have proper getter/setters to provide future
-       support for subclassing.
-     - Horrible idea:  have Mac's voice synthesis tell you when tests fail :)
-     - Have tprove duplicate all of the functionality of prove.
+    - Fix the 'exit' bug.
+    - Make sure we get the right harness output with no tests run.
+    - Make the 'colored' test output easier to override.
+    - More tests, particularly IPC::Open3
+    - Unknown callback keys should be fatal.
+    - Run it against Perl's test suite (first prove, then tprove).
+    - Comments and junk are also allowed *before* the plan.  Sigh.
+    - The 'result' objects are currently blessing hashrefs.  This is bad.
+      Instead, they should have proper getter/setters to provide future
+      support for subclassing.
+    - Horrible idea:  have Mac's voice synthesis tell you when tests fail :)
 
 QUESTIONS:
 
-     - skipped lines should always be OK?  This should be a parse error.
-       According to Schwern, this behavior is undefined.
-     - VMS 'not' and 'ok' on separate lines?
+    - skipped lines should always be OK?  This should be a parse error.
+      According to Schwern, this behavior is undefined.

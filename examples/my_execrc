@@ -6,5 +6,5 @@
 '/usr/bin/ruby' => 't/ruby.t'
 
 # let's see if we can test fetching web pages!
-'/usr/bin/perl -w test_html.pl' => 'http://www.google.com/'
-'/usr/bin/perl -w test_html.pl' => 'http://www.yahoo.com/'
+'/usr/bin/perl -w bin/test_html.pl' => 'http://www.google.com/'
+'/usr/bin/perl -w bin/test_html.pl' => 'http://www.yahoo.com/'

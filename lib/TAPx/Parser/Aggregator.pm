@@ -9,11 +9,11 @@ TAPx::Parser::Aggregator - Aggregate TAPx::Parser results.
 
 =head1 VERSION
 
-Version 0.50_02
+Version 0.50_03
 
 =cut
 
-$VERSION = '0.50_02';
+$VERSION = '0.50_03';
 
 =head1 SYNOPSIS
 
@@ -31,7 +31,7 @@ $VERSION = '0.50_02';
     printf $summary, 
            scalar $aggregate->passed, 
            scalar $aggregate->failed,
-           scalar $aggregate->todo_failed;
+           scalar $aggregate->todo_passed;
 
 =head1 DESCRIPTION
 
@@ -59,7 +59,7 @@ BEGIN {
       passed
       skipped
       todo
-      todo_failed
+      todo_passed
       total
     );
     $SUMMARY_METHOD_FOR{total} = 'tests_run';
@@ -192,15 +192,15 @@ for an explanation of description.
 
 =item * todo
 
-=item * todo_failed
+=item * todo_passed
 
 =back
 
 For example, to find out how many tests unexpectedly succeeded (TODO tests
 which passed when they shouldn't):
 
- my $count        = $aggregate->todo_failed;
- my @descriptions = $aggregate->todo_failed;
+ my $count        = $aggregate->todo_passed;
+ my @descriptions = $aggregate->todo_passed;
 
 =cut
 
@@ -215,6 +215,40 @@ Returns the total number of tests run.
 =cut
 
 sub total { shift->{total} }
+
+##############################################################################
+
+=head3 C<problems>
+
+  if ( $parser->problems ) {
+      ...
+  }
+
+This is a 'catch-all' method which returns true if any tests have currently
+failed, any TODO tests unexpectedly succeeded, or any parse errors.
+
+=cut
+
+sub problems {
+    my $self = shift;
+    return $self->failed || $self->todo_passed || $self->parse_errors;
+}
+
+##############################################################################
+
+=head3 C<todo_failed>
+
+  # deprecated in favor of 'todo_passed'.  This method was horribly misnamed.
+
+This was a badly misnamed method.  It indicates which TODO tests unexpectedly
+succeeded.  Will now issue a warning and call C<todo_passed>.
+
+=cut
+
+sub todo_failed {
+    warn '"todo_failed" is deprecated.  Please use "todo_passed".  See the docs.';
+    goto &todo_passed;
+}
 
 sub _croak {
     my $proto = shift;

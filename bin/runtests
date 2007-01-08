@@ -4,8 +4,12 @@ eval 'exec /usr/bin/perl -w -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
 
 use strict;
+use Pod::Usage 1.12;
 
 use Getopt::Long;
+
+# Allow cuddling the paths with the -I
+@ARGV = map { /^(-I)(.+)/ ? ($1,$2) : $_ } @ARGV;
 
 Getopt::Long::Configure( 'no_ignore_case', 'bundling' );
 GetOptions(
@@ -15,14 +19,16 @@ GetOptions(
     'b|blib'      => \my $BLIB,
     's|shuffle'   => \my $SHUFFLE,
     'c|color'     => \my $COLOR,
-    #'m|merge'     => \my $MERGE,   # this may no longer be necessary
-    'h|harness=s' => \my $HARNESS,
+    'harness=s'   => \my $HARNESS,
     'r|recurse'   => \my $RECURSE,
     'p|parse'     => \my $PARSE,
     'q|quiet'     => \my $QUIET,
     'Q|QUIET'     => \my $REALLY_QUIET,
     'e|exec=s'    => \my $EXEC,
     'execrc=s'    => \my $EXECRC,
+    'I=s@'        => \my @INCLUDES,
+    'h|help|?'    => sub {pod2usage({-verbose => 1}); exit},
+    'H|man'       => sub {pod2usage({-verbose => 2}); exit},
 
     #'x|xtension=s' => \my $EXTENSION,
     'T' => \my $TAINT_FAIL,
@@ -86,6 +92,9 @@ if ($LIB) {
 if ($BLIB) {
     push @libs, 'blib/lib';
 }
+if (@INCLUDES) {
+    push @libs, @INCLUDES;
+}
 if (@libs) {
     $args{lib} = \@libs;
 }
@@ -125,7 +134,6 @@ if (@switches) {
 
 $args{verbose}      = $VERBOSE  if $VERBOSE;
 $args{failures}     = $FAILURES if $FAILURES;
-#$args{merge}        = $MERGE    if $MERGE;
 $args{quiet}        = 1         if $QUIET;
 $args{really_quiet} = 1         if $REALLY_QUIET;
 $args{errors}       = 1         if $PARSE;
@@ -172,28 +180,32 @@ runtests - Run tests through a TAPx harness.
 
 =head1 OPTIONS
 
-=head2 Boolean options
+Boolean options
 
  -v,  --verbose     Print all test lines.
- -l,  --lib         Add 'lib' to the path for your tests.
- -b,  --blib        Add 'blib/lib' to the path for your tests.
+ -l,  --lib         Add 'lib' to the path for your tests (-Ilib).
+ -b,  --blib        Add 'blib/lib' to the path for your tests (-Iblib/lib).
  -s,  --shuffle     Run the tests in random order.
  -c,  --color       Color test output.  See TAPx::Harness::Color.
  -f,  --failures    Only show failed tests.
  -r,  --recurse     Recursively descend into directories.
  -q,  --quiet       Suppress some test output while running tests.
- -q,  --QUIET       Only print summary results.
+ -Q,  --QUIET       Only print summary results.
  -p,  --parse       Show full list of TAP parse errors, if any.
  -T                 Enable tainting checks.
  -t                 Enable tainting warnings.
  -W                 Enable fatal warnings.
  -w                 Enable warnings.
+ -h,  --help        Display this help
+ -?,                Display this help
+ -H,  --man         Longer manpage for prove
 
-=head2 Options which take arguments
+Options which take arguments
 
- -h,  --harness     Define test harness to use.  See TAPx::Harness.
+ -I                 Library paths to include.
  -e,  --exec        Program to run the tests with.
-      --execrc      Location of 'execrc' file (no short form)
+      --harness     Define test harness to use.  See TAPx::Harness.
+      --execrc      Location of 'execrc' file (no short form).
 
 =head2 Reading from C<STDIN>
 
@@ -251,6 +263,11 @@ the harness must try to open the file and examine its shebang line, determine
 how it's to be invoked, and with which switches.  Thus, every file is opened
 twice.  With C<--exec>, you only need to open each file once, thus saving a
 lot of I/O.
+
+=head1 SEE ALSO
+
+C<prove>, which comes with L<Test::Harness> and whose code I've nicked in a
+few places (thanks Andy!).
 
 =head1 CAVEATS
 
