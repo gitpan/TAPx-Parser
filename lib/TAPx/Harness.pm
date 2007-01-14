@@ -18,11 +18,21 @@ TAPx::Harness - Run Perl test scripts with statistics
 
 =head1 VERSION
 
-Version 0.50_03
+Version 0.50_04
 
 =cut
 
-$VERSION = '0.50_03';
+$VERSION = '0.50_04';
+
+$ENV{HARNESS_ACTIVE}  = 1;
+$ENV{HARNESS_VERSION} = $VERSION;
+
+END {
+
+    # For VMS.
+    delete $ENV{HARNESS_ACTIVE};
+    delete $ENV{HARNESS_VERSION};
+}
 
 =head1 DESCRIPTION
 
@@ -61,41 +71,23 @@ BEGIN {
                 $dirs .= 's' if @bad_libs > 1;
                 $self->_error("No such $dirs (@bad_libs)");
             }
-            return join ' ', map {"-I$_"} @$libs;
+            return [ map {"-I$_"} @$libs ];
         },
         switches => sub {
             my ( $self, $switches ) = @_;
             $switches = [$switches] unless 'ARRAY' eq ref $switches;
-            return join ' ', map { /^-/ ? $_ : "-$_" } @$switches;
+            my @switches = map { /^-/ ? $_ : "-$_" } @$switches;
+            my %found = map { $_ => 0 } @switches;
+            @switches = grep { !$found{$_}++ } @switches;
+            return \@switches;
         },
-        verbose  => sub { shift; shift },
-        failures => sub { shift; shift },
-        errors   => sub { shift; shift },
-        quiet    => sub {
-            my $self = shift;
-            return ( $self->really_quiet || $self->{quiet} ) unless @_;
-            $self->{quiet} = shift;
-            return $self;
-        },
-        really_quiet => sub {
-            my $self = shift;
-            return $self->{really_quiet} unless @_;
-            $self->{really_quiet} = shift;
-            return $self;
-        },
-        exec => sub {
-            my ( $self, $format ) = @_;
-            unless ( $format =~ /%s/ ) {
-                $format .= ' "%s"';   # make the %s optional
-            }
-            my $string = sprintf $format => 'test';
-            if ( $format eq $string ) {
-                $self->_error("Bad format ($format)");
-                return;
-            }
-            return $format;
-        },
-        execrc => sub {
+        verbose      => sub { shift; shift },
+        failures     => sub { shift; shift },
+        errors       => sub { shift; shift },
+        quiet        => sub { shift; shift },
+        really_quiet => sub { shift; shift },
+        exec         => sub { shift; shift },
+        execrc       => sub {
             my ( $self, $execrc ) = @_;
             unless ( -f $execrc ) {
                 $self->_error("Cannot find execrc ($execrc)");
@@ -104,20 +96,39 @@ BEGIN {
         },
     );
     my @getter_setters = qw/
-        _curr_parser
-        _curr_test
-        _execrc
-        _longest
-        _newline_printed
-        _printed_summary_header
-    /;
+      _curr_parser
+      _curr_test
+      _execrc
+      _longest
+      _newline_printed
+      _printed_summary_header
+      /;
+
     foreach my $method ( @getter_setters, keys %VALIDATION_FOR ) {
         no strict 'refs';
-        *$method = sub {
-            my $self = shift;
-            return $self->{$method} unless @_;
-            $self->{$method} = shift;
-        };
+        if ( $method eq 'lib' || $method eq 'switches' ) {
+            *$method = sub {
+                my $self = shift;
+                unless (@_) {
+                    $self->{$method} ||= [];
+                    return
+                      wantarray ? @{ $self->{$method} } : $self->{$method};
+                }
+                $self->_croak("Too many arguments to &\$method")
+                  if @_ > 1;
+                my $args = shift;
+                $args = [$args] unless ref $args;
+                $self->{$method} = $args;
+                return $self;
+            };
+        }
+        else {
+            *$method = sub {
+                my $self = shift;
+                return $self->{$method} unless @_;
+                $self->{$method} = shift;
+            };
+        }
     }
 }
 
@@ -222,14 +233,14 @@ sub _initialize {
         $self->_croak("Unknown arguments to TAPx::Harness::new (@props)");
     }
     $self->_read_execrc;
-    $self->quiet(0)        unless $self->quiet;    # suppress unit warnings
+    $self->quiet(0)        unless $self->quiet;       # suppress unit warnings
     $self->really_quiet(0) unless $self->really_quiet;
     return $self;
 }
 
 sub _read_execrc {
     my $self = shift;
-    $self->_execrc({});
+    $self->_execrc( {} );
     my $execrc = $self->execrc or return;
     local *FH;
     open FH, $execrc
@@ -237,14 +248,15 @@ sub _read_execrc {
     my $quoted = QUOTED;
     my $comma  = qr/\s*(?:,|=>)\s*/;
     my %exec_for;
+
     while ( my $line = <FH> ) {
-        next if $line =~ /^\s*$/;   # ignore blank lines
-        next if $line =~ /^\s*#/;   # ignore comments
+        next if $line =~ /^\s*$/;    # ignore blank lines
+        next if $line =~ /^\s*#/;    # ignore comments
         next unless $line =~ /^\s*($quoted)$comma($quoted)\s*#?/;
         my ( $exec, $file ) = ( $1, $2 );
-        s/^['"]|['"]$//g foreach $file, $exec;   # strip quotes
+        s/^['"]|['"]$//g foreach $file, $exec;    # strip quotes
         unless ( $exec =~ /%s/ ) {
-            $exec .= ' "%s"';   # make the %s optional
+            $exec .= ' "%s"';                     # make the %s optional
         }
         if ( '*' eq $file ) {
 
@@ -255,7 +267,7 @@ sub _read_execrc {
             $exec_for{$file} = $exec;
         }
     }
-    $self->_execrc(\%exec_for);
+    $self->_execrc( \%exec_for );
     return $self;
 }
 
@@ -283,7 +295,7 @@ sub runtests {
 
     my $longest = 0;
 
-    foreach my $test (@tests) {        
+    foreach my $test (@tests) {
         $longest = length $test if length $test > $longest;
     }
     $self->_longest($longest);
@@ -298,19 +310,14 @@ sub runtests {
 
         my $parser = $self->_runtest( "$name$periods", $test );
         $aggregate->add( $test, $parser );
-        if ( !$parser->problems ) {
-            $self->output("ok\n") unless $really_quiet;
-        }
-        else {
-            $self->output_test_failure($parser);
-        }
     }
 
-    $self->summary( {
-        start     => $start_time,
-        aggregate => $aggregate,
-        tests     => \@tests
-    } );
+    $self->summary(
+        {   start     => $start_time,
+            aggregate => $aggregate,
+            tests     => \@tests
+        }
+    );
 }
 
 ##############################################################################
@@ -375,10 +382,13 @@ sub summary {
     my $failed = $aggregate->failed;
     my $errors = $aggregate->parse_errors;
 
-    if ( $total == $passed ) {
+    if ( $total && $total == $passed ) {
         $self->output("All tests successful.\n");
     }
-    if ( $total != $passed or $aggregate->problems or $aggregate->skipped ) {
+    if (   $total != $passed
+        or $aggregate->has_problems
+        or $aggregate->skipped )
+    {
         $self->output("\nTest Summary Report");
         $self->output("\n-------------------\n");
         foreach my $test (@$tests) {
@@ -386,14 +396,18 @@ sub summary {
             my ($parser) = $aggregate->parsers($test);
             $self->_curr_test($test);
             $self->_curr_parser($parser);
-            $self->_output_summary_failure( 'failed',       "  Failed tests:  ");
-            $self->_output_summary_failure( 'todo_passed',  "  TODO passed:   ");
-            $self->_output_summary_failure( 'skipped',      "  Tests skipped: " );
+            $self->_output_summary_failure( 'failed', "  Failed tests:  " );
+            $self->_output_summary_failure(
+                'todo_passed',
+                "  TODO passed:   "
+            );
+            $self->_output_summary_failure( 'skipped', "  Tests skipped: " );
             if ( my @errors = $parser->parse_errors ) {
-                $self->_summary_test_header($test, $parser);
+                $self->_summary_test_header( $test, $parser );
                 if ( $self->errors || 1 == @errors ) {
                     $self->failure_output(
-                        sprintf "  Parse errors: %s\n", shift @errors
+                        sprintf "  Parse errors: %s\n",
+                        shift @errors
                     );
                     foreach my $error (@errors) {
                         my $spaces = ' ' x 16;
@@ -401,7 +415,8 @@ sub summary {
                     }
                 }
                 else {
-                    $self->failure_output("  Errors encountered while parsing tap\n");
+                    $self->failure_output(
+                        "  Errors encountered while parsing tap\n");
                 }
             }
         }
@@ -418,15 +433,13 @@ sub _output_summary_failure {
     my $test   = $self->_curr_test;
     my $parser = $self->_curr_parser;
     if ( $parser->$method ) {
-        $self->_summary_test_header($test, $parser);
+        $self->_summary_test_header( $test, $parser );
         $self->$output($name);
         my @results = $self->balanced_range( 40, $parser->$method );
-        $self->$output(sprintf "%s\n" => shift @results);
+        $self->$output( sprintf "%s\n" => shift @results );
         my $spaces = ' ' x 16;
         while (@results) {
-            $self->$output(
-                sprintf "$spaces%s\n" => shift @results
-            );
+            $self->$output( sprintf "$spaces%s\n" => shift @results );
         }
     }
 }
@@ -434,13 +447,13 @@ sub _output_summary_failure {
 sub _summary_test_header {
     my ( $self, $test, $parser ) = @_;
     return if $self->_printed_summary_header;
-    my $spaces = ' ' x ($self->_longest - length $test);
+    my $spaces = ' ' x ( $self->_longest - length $test );
     $spaces = ' ' unless $spaces;
     my $output = $self->_get_output_method($parser);
     $self->$output(
-        sprintf "$test$spaces(Wstat: %d Tests: %d Failed: %d)\n", 
+        sprintf "$test$spaces(Wstat: %d Tests: %d Failed: %d)\n",
         $parser->wait,
-        $parser->tests_run, 
+        $parser->tests_run,
         scalar $parser->failed
     );
     $self->_printed_summary_header(1);
@@ -495,7 +508,7 @@ sub balanced_range {
     @range = $self->range(@range);
     my $line = "";
     my @lines;
-    my $curr  = 0;
+    my $curr = 0;
     while (@range) {
         if ( $curr < $limit ) {
             my $range = ( shift @range ) . ", ";
@@ -525,16 +538,16 @@ sub balanced_range {
 Taks a list of numbers, sorts them, and returns a list of ranged strings:
 
  print join ', ' $harness->range( 2, 7, 1, 3, 10, 9  );
- # 1-3, 7, 10-9
+ # 1-3, 7, 9-10
 
 =cut
 
 sub range {
     my ( $self, @numbers ) = @_;
-    
+
     # shouldn't be needed, but subclasses might call this
     @numbers = sort { $a <=> $b } @numbers;
-    my ( $min,  @range );
+    my ( $min, @range );
 
     foreach my $i ( 0 .. $#numbers ) {
         my $num  = $numbers[$i];
@@ -569,10 +582,10 @@ called to spit out the list of failed tests.
 sub output_test_failure {
     my ( $self, $parser ) = @_;
     return if $self->really_quiet;
-    my $total   = $parser->tests_run;
-    my $passed  = $parser->passed;
-    my $failed  = $parser->failed;
-    my $flist   = join ", " => $self->range( $parser->failed );
+    my $total  = $parser->tests_run;
+    my $passed = $parser->passed;
+    my $failed = $parser->failed;
+    my $flist  = join ", " => $self->range( $parser->failed );
     $self->failure_output("Failed $failed/$total tests");
     if ( !$total ) {
         $self->failure_output("\nNo test run!");
@@ -593,7 +606,7 @@ sub output_test_failure {
 sub _runtest {
     my ( $self, $leader, $test ) = @_;
 
-    my $execrc = $self->_execrc;
+    my $execrc       = $self->_execrc;
     my $really_quiet = $self->really_quiet;
     $self->output($leader) unless $really_quiet;
     my $show_count = !$self->verbose && -t STDOUT;
@@ -601,11 +614,11 @@ sub _runtest {
     my %args = ( source => $test );
     my @switches = $self->lib if $self->lib;
     push @switches => $self->switches if $self->switches;
-    $args{switches} = join ' ' => @switches;
+    $args{switches} = \@switches;
 
     {
         if ( my $exec = $execrc->{$test} || $self->exec ) {
-            $args{exec} = sprintf $exec, $test;
+            $args{exec} = [ $exec, $test ];
             delete $args{source};
         }
     }
@@ -618,16 +631,16 @@ sub _runtest {
         $output = $self->_get_output_method($parser);
         if ( $result->is_bailout ) {
             $self->failure_output(
-                "Bailout called.  Further testing stopped:  "
-                . $result->explanation . "\n"
-            );
+                    "Bailout called.  Further testing stopped:  "
+                  . $result->explanation
+                  . "\n" );
             exit 1;
         }
-        unless ( $plan ) {
+        unless ($plan) {
             $plan = '/' . ( $parser->tests_planned || 0 ) . ' ';
         }
         if ( $show_count && $result->is_test ) {
-            $self->$output("\r$leader" . $result->number . $plan)
+            $self->$output( "\r$leader" . $result->number . $plan )
               unless $really_quiet;
             $self->_newline_printed(0);
         }
@@ -638,6 +651,12 @@ sub _runtest {
             1 + length($leader) + length($plan) + length( $parser->tests_run )
         );
         $self->$output("\r$spaces\r$leader") unless $really_quiet;
+    }
+    if ( !$parser->has_problems ) {
+        $self->output("ok\n") unless $really_quiet;
+    }
+    else {
+        $self->output_test_failure($parser);
     }
     return $parser;
 }
@@ -650,25 +669,24 @@ sub _process {
             $self->output("\n") unless $self->quiet;
             $self->_newline_printed(1);
         }
-        $self->output($result->as_string . "\n") unless $self->quiet;
+        $self->output( $result->as_string . "\n" ) unless $self->quiet;
     }
 }
 
 sub _get_output_method {
     my ( $self, $parser ) = @_;
-    return $parser->problems ? 'failure_output' : 'output';
+    return $parser->has_problems ? 'failure_output' : 'output';
 }
 
 sub _should_display {
     my ( $self, $result ) = @_;
-    return unless -t STDOUT;
     return if $self->really_quiet;
     return $self->verbose && !$self->failures
-      || ($result->is_comment && !$self->quiet)
-      || $self->_show_failure($result);
+      || ( $result->is_comment && !$self->quiet )
+      || $self->_should_show_failure($result);
 }
 
-sub _show_failure {
+sub _should_show_failure {
     my ( $self, $result ) = @_;
     return if !$result->is_test;
     return $self->failures && !$result->is_ok;
@@ -729,6 +747,22 @@ follows:
 Of course, if C<test_html.pl> outputs anything other than TAP, this will fail.
 
 See the C<README> in the C<examples> directory for a ready-to-run example.
+
+=head1 REPLACING
+
+If you like the C<runtests> utility and L<TAPx::Parser> but you want your own
+harness, all you need to do is write one and provide C<new> and C<runtests>
+methods.  Then you can use the C<runtests> utility like so:
+
+ runtests --harness My::Test::Harness
+
+Note that while C<runtests> accepts a list of tests (or things to be tested),
+C<new> has a fairly rich set of arguments.  You'll probably want to read over
+this code carefully to see how all of them are being used.
+
+=head1 SEE ALSO
+
+L<Test::Harness>
 
 =cut
 

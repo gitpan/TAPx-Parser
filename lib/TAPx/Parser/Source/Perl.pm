@@ -17,11 +17,11 @@ TAPx::Parser::Source::Perl - Stream Perl output
 
 =head1 VERSION
 
-Version 0.50_03
+Version 0.50_04
 
 =cut
 
-$VERSION = '0.50_03';
+$VERSION = '0.50_04';
 
 =head1 DESCRIPTION
 
@@ -88,15 +88,8 @@ sub switches {
     unless (@_) {
         return wantarray ? @{ $self->{switches} } : $self->{switches};
     }
-    my @switches;
-    if ( 1 == @_ ) {
-        my $switches = shift;
-        push @switches => 'ARRAY' eq ref $switches ? @$switches : $switches;
-    }
-    if ( 1 < @_ ) {
-        push @switches => @_;
-    }
-    $self->{switches} = [@switches];    # force a copy
+    my $switches = shift;
+    $self->{switches} = [@$switches];    # force a copy
     return $self;
 }
 
@@ -104,11 +97,13 @@ sub _get_command {
     my $self     = shift;
     my $file     = $self->source;
     my $command  = $self->_get_perl;
-    my $switches = $self->_switches;
+    my @switches = $self->_switches;
 
     $file = qq["$file"] if ( $file =~ /\s/ ) && ( $file !~ /^".*"$/ );
-    my $line = "$command $switches $file";
-    return $line;
+    my @command = ($command, @switches, $file);
+    #use Data::Dumper;
+    #warn Dumper(\@command);
+    return @command;
 }
 
 sub _switches {
@@ -141,7 +136,12 @@ sub _switches {
         $_ = qq["$_"] if ( ( /\s/ || IS_VMS ) && !/^".*"$/ );
     }
 
-    return join( " ", @switches );
+    my %found_switch = map { $_ => 0 } @switches;
+
+    # remove duplicate switches
+    @switches
+      = grep { defined $_ && $_ ne '' && !$found_switch{$_}++ } @switches;
+    return @switches;
 }
 
 sub _filtered_inc {

@@ -7,9 +7,7 @@ use TAPx::Parser;
 use TAPx::Parser::Iterator;
 use TAPx::Parser::Aggregator;
 
-#use Test::More 'no_plan';
-
-use Test::More tests => 32;
+use Test::More tests => 34;
 
 my $tap = <<'END_TAP';
 1..5
@@ -103,45 +101,5 @@ can_ok $agg, 'total';
 is $agg->total, $agg->passed + $agg->failed,
   '... and we should have the correct number of total tests';
 
-__END__
-can_ok $parser, 'failed';
-is $parser->failed, 2, '... and the correct number of failed tests';
-is_deeply [ $parser->failed ], [ 4, 6 ],
-  '... and get a list of the failed tests';
-
-can_ok $parser, 'actual_passed';
-is $parser->actual_passed, 4,
-  '... and we should have the correct number of actually passed tests';
-is_deeply [ $parser->actual_passed ], [ 1, 3, 5, 6 ],
-  '... and get a list of the actually passed tests';
-
-can_ok $parser, 'actual_failed';
-is $parser->actual_failed, 3,
-  '... and the correct number of actually failed tests';
-is_deeply [ $parser->actual_failed ], [ 2, 4, 7 ],
-  '... or get a list of the actually failed tests';
-
-can_ok $parser, 'todo';
-is $parser->todo, 3,
-  '... and we should have the correct number of TODO tests';
-is_deeply [ $parser->todo ], [ 2, 6, 7 ],
-  '... and get a list of the TODO tests';
-
-can_ok $parser, 'skipped';
-is $parser->skipped, 1,
-  '... and we should have the correct number of skipped tests';
-is_deeply [ $parser->skipped ], [5],
-  '... and get a list of the skipped tests';
-
-# check the plan
-
-can_ok $parser, 'plan';
-is $parser->plan,          '1..5', '... and we should have the correct plan';
-is $parser->tests_planned, 5,      '... and the correct number of tests';
-
-# "Unexpectedly succeeded"
-can_ok $parser, 'todo_passed';
-is scalar $parser->todo_passed, 1,
-  '... and it should report the number of tests which unexpectedly succeeded';
-is_deeply [ $parser->todo_passed ], [6],
-  '... or *which* tests unexpectedly succeeded';
+can_ok $agg, 'has_problems';
+ok $agg->has_problems, '... and it should report true if there are problems';

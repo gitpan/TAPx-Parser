@@ -9,26 +9,26 @@ use Pod::Usage 1.12;
 use Getopt::Long;
 
 # Allow cuddling the paths with the -I
-@ARGV = map { /^(-I)(.+)/ ? ($1,$2) : $_ } @ARGV;
+@ARGV = map { /^(-I)(.+)/ ? ( $1, $2 ) : $_ } @ARGV;
 
 Getopt::Long::Configure( 'no_ignore_case', 'bundling' );
 GetOptions(
-    'v|verbose'   => \my $VERBOSE,
-    'f|failures'  => \my $FAILURES,
-    'l|lib'       => \my $LIB,
-    'b|blib'      => \my $BLIB,
-    's|shuffle'   => \my $SHUFFLE,
-    'c|color'     => \my $COLOR,
-    'harness=s'   => \my $HARNESS,
-    'r|recurse'   => \my $RECURSE,
-    'p|parse'     => \my $PARSE,
-    'q|quiet'     => \my $QUIET,
-    'Q|QUIET'     => \my $REALLY_QUIET,
-    'e|exec=s'    => \my $EXEC,
-    'execrc=s'    => \my $EXECRC,
-    'I=s@'        => \my @INCLUDES,
-    'h|help|?'    => sub {pod2usage({-verbose => 1}); exit},
-    'H|man'       => sub {pod2usage({-verbose => 2}); exit},
+    'v|verbose'  => \my $VERBOSE,
+    'f|failures' => \my $FAILURES,
+    'l|lib'      => \my $LIB,
+    'b|blib'     => \my $BLIB,
+    's|shuffle'  => \my $SHUFFLE,
+    'c|color'    => \my $COLOR,
+    'harness=s'  => \my $HARNESS,
+    'r|recurse'  => \my $RECURSE,
+    'p|parse'    => \my $PARSE,
+    'q|quiet'    => \my $QUIET,
+    'Q|QUIET'    => \my $REALLY_QUIET,
+    'e|exec=s'   => \my $EXEC,
+    'execrc=s'   => \my $EXECRC,
+    'I=s@'       => \my @INCLUDES,
+    'h|help|?'   => sub { pod2usage( { -verbose => 1 } ); exit },
+    'H|man'      => sub { pod2usage( { -verbose => 2 } ); exit },
 
     #'x|xtension=s' => \my $EXTENSION,
     'T' => \my $TAINT_FAIL,
@@ -56,52 +56,10 @@ if ($HARNESS) {
 
 use File::Find;
 use File::Spec;
-my ( @tests, %tests );
 
-@ARGV = 't' unless @ARGV;
-foreach my $arg (@ARGV) {
-    if ( '-' eq $arg ) {
-        push @ARGV => <STDIN>;
-        chomp(@ARGV);
-        next;
-    }
-        
-    if ( -d $arg ) {
-        my @files = get_tests($arg);
-        foreach my $file (@files) {
-            push @tests => $file unless exists $tests{$file};
-        }
-        @tests{@files} = (1) x @files;
-    }
-    else {
-        push @tests => $arg unless exists $tests{$arg};
-        $tests{$arg} = 1;
-    }
-}
+my @tests = get_tests(@ARGV);
 
 shuffle(@tests) if $SHUFFLE;
-
-#
-# process libs
-#
-
-my ( %args, @libs, @switches );
-if ($LIB) {
-    push @libs, 'lib';
-}
-if ($BLIB) {
-    push @libs, 'blib/lib';
-}
-if (@INCLUDES) {
-    push @libs, @INCLUDES;
-}
-if (@libs) {
-    $args{lib} = \@libs;
-}
-
-#
-# process switches
-#
 
 if ( $TAINT_FAIL && $TAINT_WARN ) {
     die "-t and -T are mutually exclusive";
@@ -110,28 +68,9 @@ if ( $WARNINGS_FAIL && $WARNINGS_WARN ) {
     die "-w and -W are mutually exclusive";
 }
 
-# notes that -T or -t must be at the front of the switches!
-if ($TAINT_FAIL) {
-    push @switches, 'T';
-}
-elsif ($TAINT_WARN) {
-    push @switches, 't';
-}
-if ($WARNINGS_FAIL) {
-    push @switches, 'W';
-}
-elsif ($WARNINGS_WARN) {
-    push @switches, 'w';
-}
-
-if (@switches) {
-    $args{switches} = \@switches;
-}
-
-#
-# process miscellaneous
-#
-
+my %args;
+$args{lib}          = get_libs();
+$args{switches}     = get_switches();
 $args{verbose}      = $VERBOSE  if $VERBOSE;
 $args{failures}     = $FAILURES if $FAILURES;
 $args{quiet}        = 1         if $QUIET;
@@ -139,10 +78,72 @@ $args{really_quiet} = 1         if $REALLY_QUIET;
 $args{errors}       = 1         if $PARSE;
 $args{exec}         = $EXEC     if $EXEC;
 $args{execrc}       = $EXECRC   if $EXECRC;
+use Data::Dumper;
+print Dumper \%args;
 my $harness = $harness_class->new( \%args );
 $harness->runtests(@tests);
 
+sub get_switches {
+    my @switches;
+
+    # notes that -T or -t must be at the front of the switches!
+    if ($TAINT_FAIL) {
+        push @switches, 'T';
+    }
+    elsif ($TAINT_WARN) {
+        push @switches, 't';
+    }
+    if ($WARNINGS_FAIL) {
+        push @switches, 'W';
+    }
+    elsif ($WARNINGS_WARN) {
+        push @switches, 'w';
+    }
+
+    return @switches ? \@switches : ();
+}
+
+sub get_libs {
+    my @libs;
+    if ($LIB) {
+        push @libs, 'lib';
+    }
+    if ($BLIB) {
+        push @libs, 'blib/lib';
+    }
+    if (@INCLUDES) {
+        push @libs, @INCLUDES;
+    }
+    return @libs ? \@libs : ();
+}
+
 sub get_tests {
+    my @argv = @_;
+    my ( @tests, %tests );
+    @argv = 't' unless @argv;
+    foreach my $arg (@argv) {
+        if ( '-' eq $arg ) {
+            push @argv => <STDIN>;
+            chomp(@argv);
+            next;
+        }
+
+        if ( -d $arg ) {
+            my @files = _get_tests($arg);
+            foreach my $file (@files) {
+                push @tests => $file unless exists $tests{$file};
+            }
+            @tests{@files} = (1) x @files;
+        }
+        else {
+            push @tests => $arg unless exists $tests{$arg};
+            $tests{$arg} = 1;
+        }
+    }
+    return @tests;
+}
+
+sub _get_tests {
     my $dir = shift;
     my @tests;
     if ($RECURSE) {

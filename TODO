@@ -1,18 +1,13 @@
 TODO:
 
+    - Have the aggregator return an iterator.
     - Fix the 'exit' bug.
     - Make sure we get the right harness output with no tests run.
     - Make the 'colored' test output easier to override.
     - More tests, particularly IPC::Open3
     - Unknown callback keys should be fatal.
     - Run it against Perl's test suite (first prove, then tprove).
-    - Comments and junk are also allowed *before* the plan.  Sigh.
     - The 'result' objects are currently blessing hashrefs.  This is bad.
       Instead, they should have proper getter/setters to provide future
       support for subclassing.
     - Horrible idea:  have Mac's voice synthesis tell you when tests fail :)
-
-QUESTIONS:
-
-    - skipped lines should always be OK?  This should be a parse error.
-      According to Schwern, this behavior is undefined.

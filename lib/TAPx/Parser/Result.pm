@@ -1,13 +1,13 @@
-package TAPx::Parser::Results;
+package TAPx::Parser::Result;
 
 use strict;
 use vars qw($VERSION);
 
-use TAPx::Parser::Results::Plan;
-use TAPx::Parser::Results::Test;
-use TAPx::Parser::Results::Comment;
-use TAPx::Parser::Results::Bailout;
-use TAPx::Parser::Results::Unknown;
+use TAPx::Parser::Result::Plan;
+use TAPx::Parser::Result::Test;
+use TAPx::Parser::Result::Comment;
+use TAPx::Parser::Result::Bailout;
+use TAPx::Parser::Result::Unknown;
 
 BEGIN {
     no strict 'refs';
@@ -21,15 +21,15 @@ BEGIN {
 
 =head1 NAME
 
-TAPx::Parser::Results - TAPx::Parser output
+TAPx::Parser::Result - TAPx::Parser output
 
 =head1 VERSION
 
-Version 0.50_03
+Version 0.50_04
 
 =cut
 
-$VERSION = '0.50_03';
+$VERSION = '0.50_04';
 
 =head2 DESCRIPTION
 
@@ -42,11 +42,11 @@ only and should not be relied upon.
 # note that this is bad.  Makes it very difficult to subclass, but then, it
 # would be a lot of work to subclass this system.
 my %class_for = (
-    plan    => 'TAPx::Parser::Results::Plan',
-    test    => 'TAPx::Parser::Results::Test',
-    comment => 'TAPx::Parser::Results::Comment',
-    bailout => 'TAPx::Parser::Results::Bailout',
-    unknown => 'TAPx::Parser::Results::Unknown',
+    plan    => 'TAPx::Parser::Result::Plan',
+    test    => 'TAPx::Parser::Result::Test',
+    comment => 'TAPx::Parser::Result::Comment',
+    bailout => 'TAPx::Parser::Result::Bailout',
+    unknown => 'TAPx::Parser::Result::Unknown',
 );
 
 ##############################################################################

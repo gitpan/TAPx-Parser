@@ -9,11 +9,11 @@ TAPx::Parser::Aggregator - Aggregate TAPx::Parser results.
 
 =head1 VERSION
 
-Version 0.50_03
+Version 0.50_04
 
 =cut
 
-$VERSION = '0.50_03';
+$VERSION = '0.50_04';
 
 =head1 SYNOPSIS
 
@@ -218,9 +218,9 @@ sub total { shift->{total} }
 
 ##############################################################################
 
-=head3 C<problems>
+=head3 C<has_problems>
 
-  if ( $parser->problems ) {
+  if ( $parser->has_problems ) {
       ...
   }
 
@@ -229,7 +229,7 @@ failed, any TODO tests unexpectedly succeeded, or any parse errors.
 
 =cut
 
-sub problems {
+sub has_problems {
     my $self = shift;
     return $self->failed || $self->todo_passed || $self->parse_errors;
 }

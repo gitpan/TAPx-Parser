@@ -8,12 +8,12 @@ BEGIN {
       TAPx::Parser::Aggregator
       TAPx::Parser::Grammar
       TAPx::Parser::Iterator
-      TAPx::Parser::Results
-      TAPx::Parser::Results::Comment
-      TAPx::Parser::Results::Plan
-      TAPx::Parser::Results::Test
-      TAPx::Parser::Results::Unknown
-      TAPx::Parser::Results::Bailout
+      TAPx::Parser::Result
+      TAPx::Parser::Result::Comment
+      TAPx::Parser::Result::Plan
+      TAPx::Parser::Result::Test
+      TAPx::Parser::Result::Unknown
+      TAPx::Parser::Result::Bailout
       TAPx::Parser::Source
       TAPx::Parser::Source::Perl
       TAPx::Harness

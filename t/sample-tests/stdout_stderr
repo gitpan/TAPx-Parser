@@ -1,6 +1,4 @@
 use Test::More 'no_plan';
-my $tb = Test::More->builder;
-#$tb->failure_output( $tb->output );
 diag 'comments';
 ok 1;
 ok 1;

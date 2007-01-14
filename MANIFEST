@@ -17,12 +17,12 @@ lib/TAPx/Parser.pm
 lib/TAPx/Parser/Aggregator.pm
 lib/TAPx/Parser/Grammar.pm
 lib/TAPx/Parser/Iterator.pm
-lib/TAPx/Parser/Results.pm
-lib/TAPx/Parser/Results/Bailout.pm
-lib/TAPx/Parser/Results/Comment.pm
-lib/TAPx/Parser/Results/Plan.pm
-lib/TAPx/Parser/Results/Test.pm
-lib/TAPx/Parser/Results/Unknown.pm
+lib/TAPx/Parser/Result.pm
+lib/TAPx/Parser/Result/Bailout.pm
+lib/TAPx/Parser/Result/Comment.pm
+lib/TAPx/Parser/Result/Plan.pm
+lib/TAPx/Parser/Result/Test.pm
+lib/TAPx/Parser/Result/Unknown.pm
 lib/TAPx/Parser/Source.pm
 lib/TAPx/Parser/Source/Perl.pm
 Makefile.PL
@@ -40,8 +40,10 @@ t/070-callbacks.t
 t/080-premature-bailout.t
 t/090-iterators.t
 t/100-harness.t
+t/110-source.t
 t/pod-coverage.t
 t/pod.t
+t/data/execrc
 t/sample-tests/bailout
 t/sample-tests/bignum
 t/sample-tests/bignum_many
@@ -54,6 +56,7 @@ t/sample-tests/duplicates
 t/sample-tests/head_end
 t/sample-tests/head_fail
 t/sample-tests/inc_taint
+t/sample-tests/junk_before_plan
 t/sample-tests/no_nums
 t/sample-tests/no_output
 t/sample-tests/out_of_order
@@ -74,4 +77,7 @@ t/sample-tests/todo_inline
 t/sample-tests/todo_misparse
 t/sample-tests/too_many
 t/sample-tests/vms_nit
+t/source_tests/source.t
+t/source_tests/harness.t
+t/source_tests/harness_failure.t
 TODO

@@ -7,8 +7,8 @@ use lib 'lib';
 use Test::More tests => 21;
 use TAPx::Parser;
 
-my $plan_line = 'TAPx::Parser::Results::Plan';
-my $test_line = 'TAPx::Parser::Results::Test';
+my $plan_line = 'TAPx::Parser::Result::Plan';
+my $test_line = 'TAPx::Parser::Result::Test';
 
 sub _parser {
     my $parser = TAPx::Parser->new( { tap => shift } );

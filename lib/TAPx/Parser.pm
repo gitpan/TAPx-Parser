@@ -4,7 +4,7 @@ use strict;
 use vars qw($VERSION);
 
 use TAPx::Parser::Grammar;
-use TAPx::Parser::Results;
+use TAPx::Parser::Result;
 use TAPx::Parser::Source;
 use TAPx::Parser::Source::Perl;
 use TAPx::Parser::Iterator;
@@ -15,15 +15,16 @@ TAPx::Parser - Parse L<TAP|Test::Harness::TAP> output
 
 =head1 VERSION
 
-Version 0.50_03
+Version 0.50_04
 
 =cut
 
-$VERSION = '0.50_03';
+$VERSION = '0.50_04';
 
 BEGIN {
     foreach my $method (
         qw<
+        _can_ignore_output
         _end_tap
         _plan_found
         _start_tap
@@ -130,11 +131,11 @@ The value should be the complete TAP output.
 
 =item * C<exec>
 
-If passed a string, will attempt to create the iterator by passing a
-C<TAPx::Parser::Source> object to C<TAPx::Parser::Iterator>, using the string
-as the thing to be create via a piped open:
+If passed an array reference, will attempt to create the iterator by passing a
+C<TAPx::Parser::Source> object to C<TAPx::Parser::Iterator>, using the array
+reference strings as the command arguments to C<&IPC::Open3::open3>:
 
- exec => '/usr/bin/ruby t/my_test.rb'
+ exec => [ '/usr/bin/ruby', 't/my_test.rb' ]
 
 Note that C<source> and C<exec> are mutually exclusive.
 
@@ -203,7 +204,7 @@ sub new {
 This method returns the results of the parsing, one result at a time.  Note
 that it is destructive.  You can't rewind and examine previous results.
 
-Each result returned is a subclass of C<TAPx::Parser::Results>.  See that
+Each result returned is a subclass of C<TAPx::Parser::Result>.  See that
 module and related classes for more information on how to use them.
 
 =cut
@@ -218,7 +219,7 @@ sub next {
     my @tokens = $self->_lex($next);
     my $token;
     if (@tokens) {
-        $token = TAPx::Parser::Results->new(@tokens);
+        $token = TAPx::Parser::Result->new(@tokens);
     }
     if ( $token && $token->is_test ) {
         my $count = $self->tests_planned;
@@ -237,6 +238,9 @@ sub next {
         return $token;
     }
     $self->_validate($token);
+    if ( !$token->is_unknown && !$token->is_comment ) {
+        $self->_can_ignore_output(0);
+    }
     return $token;
 }
 
@@ -273,21 +277,22 @@ sub run {
     # of the following, anything beginning with an underscore is strictly
     # internal and should not be exposed.
     my %initialize = (
-        _end_tap      => 0,
-        _plan_found   => 0,     # how many plans were found
-        _start_tap    => 0,
-        plan          => '',    # the test plan (e.g., 1..3)
-        tap           => '',    # the TAP
-        tests_run     => 0,     # actual current test numbers
-        results       => [],    # TAP parser results
-        skipped       => [],    #
-        todo          => [],    #
-        passed        => [],    #
-        failed        => [],    #
-        actual_failed => [],    # how many tests really failed
-        actual_passed => [],    # how many tests really passed
-        todo_passed   => [],    # tests which unexpectedly succeed
-        parse_errors  => [],    # perfect TAP should have none
+        _can_ignore_output => 1,
+        _end_tap           => 0,
+        _plan_found        => 0,     # how many plans were found
+        _start_tap         => 0,
+        plan               => '',    # the test plan (e.g., 1..3)
+        tap                => '',    # the TAP
+        tests_run          => 0,     # actual current test numbers
+        results            => [],    # TAP parser results
+        skipped            => [],    #
+        todo               => [],    #
+        passed             => [],    #
+        failed             => [],    #
+        actual_failed      => [],    # how many tests really failed
+        actual_passed      => [],    # how many tests really passed
+        todo_passed        => [],    # tests which unexpectedly succeed
+        parse_errors       => [],    # perfect TAP should have none
     );
 
     sub _initialize {
@@ -632,7 +637,7 @@ and will issue a warning.
 If a test number is greater than the number of planned tests, this method will
 return true.  Unplanned tests will I<always> return false for C<is_ok>,
 regardless of whether or not the test C<has_todo> (see
-L<TAPx::Parser::Results::Test> for more information about this).
+L<TAPx::Parser::Result::Test> for more information about this).
 
 =head3 C<has_skip>
 
@@ -776,9 +781,9 @@ sub skipped { @{ shift->{skipped} } }
 
 ##############################################################################
 
-=head3 C<problems>
+=head3 C<has_problems>
 
-  if ( $parser->problems ) {
+  if ( $parser->has_problems ) {
       ...
   }
 
@@ -787,7 +792,7 @@ failed, any TODO tests unexpectedly succeeded, or any parse errors.
 
 =cut
 
-sub problems {
+sub has_problems {
     my $self = shift;
     return $self->failed || $self->todo_passed || $self->parse_errors;
 }
@@ -948,7 +953,7 @@ sub _aggregate_results {
             $self->plan( $plan->plan );
             $self->_plan_found( $self->_plan_found + 1 );
             if ( !$self->_start_tap && !$self->_end_tap ) {
-                if ( !$self->_end_plan_error ) {
+                if ( !$self->_end_plan_error && !$self->_can_ignore_output ) {
                     my $line = $plan->as_string;
                     $self->_end_plan_error(
                         "Plan ($line) must be at the beginning or end of the TAP output"
@@ -1197,8 +1202,7 @@ A formal grammar would look similar to the following:
  positiveInteger    ::= ( digit - '0' ) {digit}
  nonNegativeInteger ::= digit {digit}
  
- 
- tap         ::= plan lines | lines plan {comment}
+ tap         ::= {comment} plan lines | lines plan {comment}
  
  plan        ::= '1..' nonNegativeInteger "\n"
  

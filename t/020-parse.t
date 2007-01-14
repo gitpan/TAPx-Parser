@@ -4,7 +4,7 @@ use strict;
 
 use lib 'lib';
 
-use Test::More tests => 200;
+use Test::More tests => 202;
 use TAPx::Parser;
 use TAPx::Parser::Iterator;
 
@@ -19,11 +19,11 @@ sub _get_results {
 
 my ( $PARSER, $PLAN, $TEST, $COMMENT, $BAILOUT, $UNKNOWN ) = qw(
   TAPx::Parser
-  TAPx::Parser::Results::Plan
-  TAPx::Parser::Results::Test
-  TAPx::Parser::Results::Comment
-  TAPx::Parser::Results::Bailout
-  TAPx::Parser::Results::Unknown
+  TAPx::Parser::Result::Plan
+  TAPx::Parser::Result::Test
+  TAPx::Parser::Result::Comment
+  TAPx::Parser::Result::Bailout
+  TAPx::Parser::Result::Unknown
 );
 
 my $tap = <<'END_TAP';
@@ -57,6 +57,8 @@ can_ok $result, 'type';
 is $result->type, 'plan', '... and it should report the correct type';
 ok $result->is_plan,   '... and it should identify itself as a plan';
 is $result->plan,      '1..7', '... and identify the plan';
+ok !$result->directive, '... and this plan should not have a directive';
+ok !$result->explanation, '... or a directive explanation';
 is $result->as_string, '1..7',
   '... and have the correct string representation';
 is $result->raw, '1..7', '... and raw() should return the original line';
