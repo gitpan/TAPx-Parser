@@ -1,6 +1,11 @@
 Revision history for TAP-Parser
 
-0.05_04 14 January 2007
+0.50_05 15 January 2007
+    - Removed debugging code accidentally left in bin/runtests.
+    - Removed 'local $/ = ...' from the iterator.  Hopefully that will fix the
+      line ending bug, but I don't know about the wstat problem.
+
+0.50_04 14 January 2007
     - BACKWARDS IMCOMPATIBLE:  Renamed all '::Results' classes to '::Result'
       because they represent a single result.
     - Fixed bug where piping would break verbose output.
@@ -15,7 +20,7 @@ Revision history for TAP-Parser
     - Renamed 'problems' in TAPx::Parser and TAPx::Aggregator to
       'has_problems'.
 
-0.05_03 08 January 2007
+0.50_03 08 January 2007
 
     - Fixed bug where '-q' or '-Q' with colored tests weren't suppressing all
       information.

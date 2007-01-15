@@ -21,11 +21,11 @@ TAPx::Parser::Source - Stream output from some source
 
 =head1 VERSION
 
-Version 0.50_04
+Version 0.50_05
 
 =cut
 
-$VERSION = '0.50_04';
+$VERSION = '0.50_05';
 
 =head1 DESCRIPTION
 
@@ -108,7 +108,9 @@ sub get_stream {
     $stdout->add($stdout_handle);
 
     if ( my $pid = open3( undef, $stdout_handle, undef, @command ) ) {
-        return TAPx::Parser::Iterator->new($stdout_handle);
+        my $iter = TAPx::Parser::Iterator->new($stdout_handle);
+        $iter->pid($pid);
+        return $iter;
     }
     else {
         $self->exit( $? >> 8 );
@@ -153,6 +155,23 @@ sub exit {
     my $self = shift;
     return $self->{exit} unless @_;
     $self->{exit} = shift;
+    return $self;
+}
+
+##############################################################################
+
+=head3 C<pid>
+
+  my $pid = $source->pid;
+
+Returns the pid of the command being used to execute the tests.
+
+=cut
+
+sub pid {
+    my $self = shift;
+    return $self->{pid} unless @_;
+    $self->{pid} = shift;
     return $self;
 }
 

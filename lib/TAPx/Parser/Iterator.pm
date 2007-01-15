@@ -9,11 +9,11 @@ TAPx::Parser::Iterator - Internal TAPx::Parser Iterator
 
 =head1 VERSION
 
-Version 0.50_04
+Version 0.50_05
 
 =cut
 
-$VERSION = '0.50_04';
+$VERSION = '0.50_05';
 
 =head1 SYNOPSIS
 
@@ -81,7 +81,7 @@ package TAPx::Parser::Iterator::FH;
 
 use vars qw($VERSION @ISA);
 @ISA     = 'TAPx::Parser::Iterator';
-$VERSION = '0.50_04';
+$VERSION = '0.50_05';
 
 sub new {
     my ( $class, $thing ) = @_;
@@ -94,6 +94,25 @@ sub new {
     }, $class;
 }
 
+##############################################################################
+
+=head3 C<pid>
+
+  my $pid = $source->pid;
+  $source->pid($pid);
+
+Getter/Setter for the pid of the process the filehandle reads from.  Only
+makes sense when a filehandle is being used for the iterator.
+
+=cut
+
+sub pid {
+    my $self = shift;
+    return $self->{pid} unless @_;
+    $self->{pid} = shift;
+    return $self;
+}
+
 sub wait     { $_[0]->{wait} }
 sub exit     { $_[0]->{exit} }
 sub is_first { $_[0]->{is_first} }
@@ -103,7 +122,6 @@ sub next {
     my $self = shift;
     my $fh   = $self->{fh};
 
-    local $/ = "\n";
     my $line;
     if ( defined( $line = $self->{next} ) ) {
         if ( defined( my $next = <$fh> ) ) {
@@ -151,7 +169,7 @@ package TAPx::Parser::Iterator::ARRAY;
 
 use vars qw($VERSION @ISA);
 @ISA     = 'TAPx::Parser::Iterator';
-$VERSION = '0.50_04';
+$VERSION = '0.50_05';
 
 sub new {
     my ( $class, $thing ) = @_;
@@ -173,4 +191,4 @@ sub next {
     return $self->{array}->[ $self->{idx}++ ];
 }
 
-"Steve Peters, Master Of True Value Finding, was here.";
+1;

@@ -78,8 +78,6 @@ $args{really_quiet} = 1         if $REALLY_QUIET;
 $args{errors}       = 1         if $PARSE;
 $args{exec}         = $EXEC     if $EXEC;
 $args{execrc}       = $EXECRC   if $EXECRC;
-use Data::Dumper;
-print Dumper \%args;
 my $harness = $harness_class->new( \%args );
 $harness->runtests(@tests);
 

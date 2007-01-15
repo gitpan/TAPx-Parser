@@ -17,11 +17,11 @@ TAPx::Parser::Source::Perl - Stream Perl output
 
 =head1 VERSION
 
-Version 0.50_04
+Version 0.50_05
 
 =cut
 
-$VERSION = '0.50_04';
+$VERSION = '0.50_05';
 
 =head1 DESCRIPTION
 
