@@ -25,11 +25,11 @@ TAPx::Parser::Result - TAPx::Parser output
 
 =head1 VERSION
 
-Version 0.50_05
+Version 0.50_06
 
 =cut
 
-$VERSION = '0.50_05';
+$VERSION = '0.50_06';
 
 =head2 DESCRIPTION
 
@@ -169,9 +169,17 @@ test result returns true.  This is merely provided as a convenient shortcut.
 
 sub is_ok { 1 };
 
+##############################################################################
+
+=head3 C<passed>
+
+Deprecated.  Please use C<is_ok> instead.
+
+=cut
+
 sub passed {
     warn 'passed() is deprecated.  Please use "is_ok()"';
-    goto &is_ok;
+    shift->is_ok;
 }
 
 1;

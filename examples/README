@@ -23,8 +23,8 @@ C<runtests> utility:
    Tests skipped: 3-4
  Files=4, Tests=10,  3 wallclock secs ( 0.92 cusr +  0.23 csys =  1.15 CPU)
 
-The C<my_exerc> is a file which tells the test harness how to execute any tests
-it encounters.
+The C<my_execrc> is a file which tells the test harness how to execute any
+tests it encounters.
 
 The C<t> argument tells it to search in the C<t/> directory for any tests.
 One of the tests it finds is written in Ruby, but the C<my_execrc> file tells

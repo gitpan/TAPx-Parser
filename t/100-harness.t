@@ -74,7 +74,7 @@ foreach my $HARNESS (qw<TAPx::Harness TAPx::Harness::Color>) {
     };
     my $harness = TAPx::Harness->new( { verbose => 1 } );
     can_ok $harness, 'runtests';
-    $harness->runtests('t/source_tests/harness.t');
+    $harness->runtests('t/source_tests/harness');
 
     chomp(@output);
 
@@ -95,7 +95,7 @@ foreach my $HARNESS (qw<TAPx::Harness TAPx::Harness::Color>) {
       '... and the report summary should look correct';
 
     @output = ();
-    $harness->runtests('t/source_tests/harness_failure.t');
+    $harness->runtests('t/source_tests/harness_failure');
     chomp(@output);
 
     @output = map { trim($_) } @output;
@@ -115,7 +115,7 @@ foreach my $HARNESS (qw<TAPx::Harness TAPx::Harness::Color>) {
     my @expected_summary = (
         'Test Summary Report',
         '-------------------',
-        't/source_tests/harness_failure.t (Wstat: 0 Tests: 2 Failed: 1)',
+        't/source_tests/harness_failure (Wstat: 0 Tests: 2 Failed: 1)',
         'Failed tests:',
         '2',
     );

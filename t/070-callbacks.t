@@ -6,7 +6,7 @@ use lib 'lib';
 use TAPx::Parser;
 use TAPx::Parser::Iterator;
 
-use Test::More tests => 8;
+use Test::More tests => 9;
 
 my $tap = <<'END_TAP';
 1..5
@@ -86,3 +86,25 @@ is $plan_output, '1..5', 'Plan callbacks should succeed';
 is scalar @tests, $parser->tests_run, '... as should the test callbacks';
 is $else, 2, '... and the correct number of "ELSE" lines should be seen';
 is $all, 8, '... and the correct total number of lines should be seen';
+
+# Check callback name policing
+
+%callbacks = (
+    sometest => sub { },
+    plan     => sub { },
+    random   => sub { },
+    ALL      => sub { },
+    ELSES    => sub { },
+);
+
+$stream = TAPx::Parser::Iterator->new( [ split /\n/ => $tap ] );
+eval {
+    $parser = TAPx::Parser->new(
+        {   stream    => $stream,
+            callbacks => \%callbacks,
+        }
+    );
+};
+
+like $@, qr/ELSES, random, sometest/, 
+    'Bad callback keys faulted';

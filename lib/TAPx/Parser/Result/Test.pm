@@ -14,11 +14,11 @@ TAPx::Parser::Result::Test - Test result token.
 
 =head1 VERSION
 
-Version 0.50_05
+Version 0.50_06
 
 =cut
 
-$VERSION = '0.50_05';
+$VERSION = '0.50_06';
 
 =head1 DESCRIPTION
 
@@ -48,7 +48,7 @@ Returns the literal text of the C<ok> or C<not ok> status.
 
 =cut
 
-sub ok          { shift->{ok} }
+sub ok { shift->{ok} }
 
 ##############################################################################
 
@@ -61,10 +61,10 @@ that number.
 
 =cut
 
-sub number      { shift->{test_num} }
+sub number { shift->{test_num} }
 
 sub _number {
-    my ($self, $number) = @_;
+    my ( $self, $number ) = @_;
     $self->{test_num} = $number;
 }
 
@@ -79,7 +79,6 @@ test number but before the directive.
 
 =cut
 
-
 sub description { shift->{description} }
 
 ##############################################################################
@@ -93,7 +92,7 @@ line.
 
 =cut
 
-sub directive   { shift->{directive} }
+sub directive { shift->{directive} }
 
 ##############################################################################
 
@@ -130,13 +129,9 @@ sub is_ok {
     my $self = shift;
 
     return if $self->is_unplanned;
+
     # TODO directives reverse the sense of a test.
     return $self->has_todo ? 1 : $self->ok !~ /not/;
-}
-
-sub passed {
-    warn 'passed() is deprecated.  Please use "is_ok()"';
-    goto &is_ok;
 }
 
 ##############################################################################
@@ -154,6 +149,14 @@ sub is_actual_ok {
     my $self = shift;
     return $self->{ok} !~ /not/;
 }
+
+##############################################################################
+
+=head3 C<actual_passed>
+
+Deprecated.  Please use C<is_actual_ok> instead.
+
+=cut
 
 sub actual_passed {
     warn 'actual_passed() is deprecated.  Please use "is_actual_ok()"';
@@ -193,7 +196,8 @@ succeeded.  Will now issue a warning and call C<todo_passed>.
 =cut
 
 sub todo_failed {
-    warn '"todo_failed" is deprecated.  Please use "todo_passed".  See the docs.';
+    warn
+      'todo_failed() is deprecated.  Please use "todo_passed()"';
     goto &todo_passed;
 }
 
@@ -239,10 +243,7 @@ test line, use the C<raw> method.
 
 sub as_string {
     my $self   = shift;
-    my $string = $self->ok;
-    if ( my $number = $self->number ) {
-        $string .= " $number";
-    }
+    my $string = $self->ok . " " . $self->number;
     if ( my $description = $self->description ) {
         $string .= " $description";
     }
@@ -278,7 +279,7 @@ is reached:
 
 sub is_unplanned {
     my $self = shift;
-    return $self->{unplanned} unless @_;
+    return ( $self->{unplanned} || '' ) unless @_;
     $self->{unplanned} = !!shift;
     return $self;
 }

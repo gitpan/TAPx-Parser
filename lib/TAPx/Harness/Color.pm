@@ -10,9 +10,16 @@ use vars qw($VERSION @ISA);
 @ISA = 'TAPx::Harness';
 
 my $NO_COLOR;
+
 BEGIN {
-    eval 'use Term::ANSIColor';
-    $NO_COLOR = $@ if $@;
+    $NO_COLOR = 0;
+    if ( $^O ne 'MSWin32' ) {
+        eval 'use Term::ANSIColor';
+        $NO_COLOR = $@ if $@;
+    }
+    else {
+        warn "Color test output disabled on Windows";
+    }
 }
 
 =head1 NAME
@@ -21,11 +28,11 @@ TAPx::Harness::Color - Run Perl test scripts with color
 
 =head1 VERSION
 
-Version 0.50_05
+Version 0.50_06
 
 =cut
 
-$VERSION = '0.50_05';
+$VERSION = '0.50_06';
 
 =head1 DESCRIPTION
 
@@ -37,7 +44,8 @@ in color.  Passing tests are printed in green.  Failing tests are in red.
 Skipped tests are blue on a white background and TODO tests are printed in
 white.
 
-If C<Term::ANSIColor> cannot be found, tests will be run without color.
+If C<Term::ANSIColor> cannot be found or if running under Windows, tests will
+be run without color.
 
 =head1 SYNOPSIS
 
@@ -66,7 +74,7 @@ C<TAPx::Harness> for more details.
 
 sub new {
     my $class = shift;
-    if ( $NO_COLOR ) {
+    if ($NO_COLOR) {
         warn "Cannot run tests in color: $NO_COLOR";
         return TAPx::Harness->new(@_);
     }
@@ -86,30 +94,40 @@ red.
 
 sub failure_output {
     my $self = shift;
-    $self->output(color 'red');
+    $self->_output_color( 'red' );
     $self->output(@_);
-    $self->output( color 'reset' );
+    $self->_output_color( 'reset' );
+}
+
+# Output ANSI color escape sequence conditionally
+sub _output_color {
+    my $self = shift;
+    unless ( $NO_COLOR ) { 
+        for my $color ( @_ ) {
+            $self->output( color($color) );
+        }
+    }
 }
 
 sub _process {
     my ( $self, $result ) = @_;
-    $self->output( color 'reset' );
+    $self->_output_color( 'reset' );
     return unless $self->_should_display($result);
 
     if ( $result->is_test ) {
         if ( !$result->is_ok ) {    # even if it's TODO
-            $self->output(color 'red');
+            $self->_output_color( 'red' );
         }
         elsif ( $result->has_skip ) {
-            $self->output(color 'white on_blue');
+            $self->_output_color( 'white on_blue' );
 
         }
         elsif ( $result->has_todo ) {
-            $self->output(color 'white');
+            $self->_output_color( 'white' );
         }
     }
-    $self->output($result->as_string);
-    $self->output(color 'reset');
+    $self->output( $result->as_string );
+    $self->_output_color( 'reset' );
     $self->output("\n");
 }
 

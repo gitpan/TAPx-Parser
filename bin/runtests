@@ -10,6 +10,7 @@ use Getopt::Long;
 
 # Allow cuddling the paths with the -I
 @ARGV = map { /^(-I)(.+)/ ? ( $1, $2 ) : $_ } @ARGV;
+my $color_default = -t STDOUT && !($^O =~ /MSWin32/);
 
 Getopt::Long::Configure( 'no_ignore_case', 'bundling' );
 GetOptions(
@@ -18,7 +19,7 @@ GetOptions(
     'l|lib'      => \my $LIB,
     'b|blib'     => \my $BLIB,
     's|shuffle'  => \my $SHUFFLE,
-    'c|color'    => \my $COLOR,
+    'c|color!'   => \my $COLOR,
     'harness=s'  => \my $HARNESS,
     'r|recurse'  => \my $RECURSE,
     'p|parse'    => \my $PARSE,
@@ -36,6 +37,10 @@ GetOptions(
     'W' => \my $WARNINGS_FAIL,
     'w' => \my $WARNINGS_WARN,
 );
+
+if ( !defined $COLOR ) {
+     $COLOR = $color_default;
+}
 
 # XXX otherwise, diagnostics and failure messages are out of sequence
 # or we can't suppress STDERR on quiet
@@ -185,7 +190,8 @@ Boolean options
  -l,  --lib         Add 'lib' to the path for your tests (-Ilib).
  -b,  --blib        Add 'blib/lib' to the path for your tests (-Iblib/lib).
  -s,  --shuffle     Run the tests in random order.
- -c,  --color       Color test output.  See TAPx::Harness::Color.
+ -c,  --color       Colored test output (default).  See TAPx::Harness::Color.
+      --nocolor     Do not color test output.
  -f,  --failures    Only show failed tests.
  -r,  --recurse     Recursively descend into directories.
  -q,  --quiet       Suppress some test output while running tests.
@@ -230,6 +236,11 @@ Specifying the C<--color> or C<-c> switch is the same as:
 
 Note that this only has an effect if the C<--verbose> or C<--failures> options
 are set.
+
+By default, colored test output is the default, but if you are running Windows
+or output is not to a terminal, color is disabled.  You can override this by
+adding the C<--color> switch, but we still disable color under Windows and
+then you'll get a warning about it.
 
 =head2 C<--exec>
 

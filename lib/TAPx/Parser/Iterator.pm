@@ -9,11 +9,11 @@ TAPx::Parser::Iterator - Internal TAPx::Parser Iterator
 
 =head1 VERSION
 
-Version 0.50_05
+Version 0.50_06
 
 =cut
 
-$VERSION = '0.50_05';
+$VERSION = '0.50_06';
 
 =head1 SYNOPSIS
 
@@ -81,16 +81,16 @@ package TAPx::Parser::Iterator::FH;
 
 use vars qw($VERSION @ISA);
 @ISA     = 'TAPx::Parser::Iterator';
-$VERSION = '0.50_05';
+$VERSION = '0.50_06';
 
 sub new {
     my ( $class, $thing ) = @_;
     bless {
         fh       => $thing,
-        is_first => undef,
         next     => undef,
-        is_last  => undef,
         exit     => undef,
+        is_first => 0,
+        is_last  => 0,
     }, $class;
 }
 
@@ -151,17 +151,29 @@ sub next {
     if ( defined $line && $line =~ /^\s*not\s*$/ ) {
         $line .= ($self->next || '');
     }
+    
     return $line;
 }
 
 sub _finish {
     my $self = shift;
+    
+    my $status = $?;
+    
+    # If we have a subprocess we need to wait for it to terminate
+    if ( defined $self->{pid} ) {
+        if ( $self->{pid} == waitpid( $self->{pid}, 0 ) ) {
+            $status = $?;
+        };
+    }
+
     close $self->{fh};
+
     $self->{is_first} = 0;   # need to reset it here in case we have no output
     $self->{is_last}  = 1;
     $self->{next} = undef;
-    $self->{wait} = $?;
-    $self->{exit} = $self->_wait2exit($?);
+    $self->{wait} = $status;
+    $self->{exit} = $self->_wait2exit($status);
     return $self;
 }
 
@@ -169,7 +181,7 @@ package TAPx::Parser::Iterator::ARRAY;
 
 use vars qw($VERSION @ISA);
 @ISA     = 'TAPx::Parser::Iterator';
-$VERSION = '0.50_05';
+$VERSION = '0.50_06';
 
 sub new {
     my ( $class, $thing ) = @_;

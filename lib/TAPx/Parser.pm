@@ -15,11 +15,11 @@ TAPx::Parser - Parse L<TAP|Test::Harness::TAP> output
 
 =head1 VERSION
 
-Version 0.50_05
+Version 0.50_06
 
 =cut
 
-$VERSION = '0.50_05';
+$VERSION = '0.50_06';
 
 BEGIN {
     foreach my $method (
@@ -295,6 +295,18 @@ sub run {
         parse_errors       => [],    # perfect TAP should have none
     );
 
+    # We seem to have this list hanging around all over the place. We could
+    # probably get it from somewhere else to avoid the repetition.
+    my @legal_callback = qw(
+        test
+        plan
+        comment
+        bailout
+        unknown
+        ALL
+        ELSE
+    );
+
     sub _initialize {
         my ( $self, $arg_for ) = @_;
 
@@ -321,11 +333,13 @@ sub run {
             my $source = TAPx::Parser::Source->new;
             $source->source($exec);
             $stream = $source->get_stream;
-            if ( defined $stream->exit ) {
-                $self->exit( $stream->exit );
-            }
-            if ( defined $stream->wait ) {
-                $self->wait( $stream->wait );
+            if ( defined $stream ) {
+                if ( defined $stream->exit ) {
+                    $self->exit( $stream->exit );
+                }
+                if ( defined $stream->wait ) {
+                    $self->wait( $stream->wait );
+                }
             }
         }
         elsif ($source) {
@@ -337,12 +351,15 @@ sub run {
                 my $perl = TAPx::Parser::Source::Perl->new;
                 $perl->switches( $arg_for->{switches} )
                   if $arg_for->{switches};
+                  
                 $stream = $perl->source($source)->get_stream;
-                if ( defined $stream->exit ) {
-                    $self->exit( $stream->exit );
-                }
-                if ( defined $stream->wait ) {
-                    $self->wait( $stream->wait );
+                if ( defined $stream ) {
+                    if ( defined $stream->exit ) {
+                        $self->exit( $stream->exit );
+                    }
+                    if ( defined $stream->wait ) {
+                        $self->wait( $stream->wait );
+                    }
                 }
             }
             else {
@@ -363,7 +380,18 @@ sub run {
         while ( my ( $k, $v ) = each %initialize ) {
             $self->{$k} = 'ARRAY' eq ref $v ? [] : $v;
         }
+                
         $self->{code_for} = $arg_for->{callbacks} || {};
+
+        my $ok_callback   = '^' . join('|', @legal_callback) . '$';
+        my @bad_callbacks = grep { $_ !~ $ok_callback } 
+                            sort keys %{ $self->{code_for} };
+
+        if (@bad_callbacks) {
+            $self->_croak("The following callback names are not supported: " . 
+                join(', ', @bad_callbacks));
+        }
+
         return $self;
     }
 }
@@ -1305,28 +1333,31 @@ just words of encouragement have all been forthcoming.
 
 =item * Corion
 
+=item * Mark Stosberg
+
+=item * Andy Armstrong
+
+=item * Matt Kraai
+
 =back
 
 =head1 AUTHOR
 
 Curtis "Ovid" Poe, C<< <ovid@cpan.org> >>
+Andy Armstong, C<< <andy@hexten.net> >>
 
 =head1 BUGS
-
-=over 4
-
-=item * Exit status
-
-Currently, C<exit> codes are not being reported correctly due to the use of
-C<IPC::Open3> to synchronize STDERR and STDOUT.  Patches welcome!
-
-=back
 
 Please report any bugs or feature requests to
 C<bug-tapx-parser@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=TAPx-Parser>.
 I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.
+
+Obviously, bugs which include patches are best.  If you prefer, you can patch
+against bleed by via anonymous checkout of the latest version:
+
+ svn checkout http://svn.hexten.net/tapx
 
 =head1 COPYRIGHT & LICENSE
 

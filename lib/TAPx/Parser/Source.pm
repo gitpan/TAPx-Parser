@@ -13,7 +13,8 @@ use constant IS_VMS   => ( $^O eq 'VMS' );
 
 use TAPx::Parser::Iterator;
 
-$SIG{CHLD} = sub { wait };
+# Causes problem on MacOS and shouldn't be necessary anyway
+#$SIG{CHLD} = sub { wait };
 
 =head1 NAME
 
@@ -21,11 +22,11 @@ TAPx::Parser::Source - Stream output from some source
 
 =head1 VERSION
 
-Version 0.50_05
+Version 0.50_06
 
 =cut
 
-$VERSION = '0.50_05';
+$VERSION = '0.50_06';
 
 =head1 DESCRIPTION
 
@@ -99,23 +100,30 @@ sub get_stream {
     my @command = $self->_get_command
         or $self->_croak("No command found!");
 
-    # redirecting STDERR to STDOUT seems to keep them in sync
-    # but I lose a bit of formatting for some reason
-    my $stdout        = IO::Select->new();
     my $stdout_handle = IO::Handle->new();
-    $stdout_handle->autoflush(1);
-    $stdout->add( \*STDOUT );
-    $stdout->add($stdout_handle);
 
-    if ( my $pid = open3( undef, $stdout_handle, undef, @command ) ) {
-        my $iter = TAPx::Parser::Iterator->new($stdout_handle);
-        $iter->pid($pid);
-        return $iter;
-    }
-    else {
+    my $pid;
+    eval {
+        $pid = open3( undef, $stdout_handle, undef, @command );
+    };
+    
+    if ($@) {
+        # TODO: Need to do something better with the error info here.
         $self->exit( $? >> 8 );
         $self->error("Could not execute (@command): $!");
         return;
+    } 
+    else {
+        if (IS_WIN32) {
+            # open3 defaults to raw mode, need this for Windows. Maybe
+            # other platforms too?
+            # TODO: What was the first perl version that supports this?
+            binmode $stdout_handle, ':crlf';
+        }
+    
+        my $iter = TAPx::Parser::Iterator->new($stdout_handle);
+        $iter->pid($pid);
+        return $iter;
     }
 }
 

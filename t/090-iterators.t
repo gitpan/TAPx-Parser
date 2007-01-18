@@ -14,7 +14,7 @@ sub array_ref_from {
     return \@lines;
 }
 
-# we slurp __DATA__ and then reset it so we don't have to duplicate out TAP
+# we slurp __DATA__ and then reset it so we don't have to duplicate our TAP
 my $offset = tell DATA;
 my $tap = do { local $/; <DATA> };
 seek DATA, $offset, 0;

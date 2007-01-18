@@ -17,11 +17,11 @@ TAPx::Parser::Source::Perl - Stream Perl output
 
 =head1 VERSION
 
-Version 0.50_05
+Version 0.50_06
 
 =cut
 
-$VERSION = '0.50_05';
+$VERSION = '0.50_06';
 
 =head1 DESCRIPTION
 
@@ -66,7 +66,7 @@ sub source {
     unless ( -f $filename ) {
         $self->_croak("Cannot find ($filename)");
     }
-    $self->{source} = $filename;
+    $self->{source} = $filename;    
     return $self;
 }
 

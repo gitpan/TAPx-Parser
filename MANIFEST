@@ -41,6 +41,8 @@ t/080-premature-bailout.t
 t/090-iterators.t
 t/100-harness.t
 t/110-source.t
+t/120-varsource.t
+t/130-results.t
 t/pod-coverage.t
 t/pod.t
 t/data/execrc
@@ -77,7 +79,8 @@ t/sample-tests/todo_inline
 t/sample-tests/todo_misparse
 t/sample-tests/too_many
 t/sample-tests/vms_nit
-t/source_tests/source.t
-t/source_tests/harness.t
-t/source_tests/harness_failure.t
+t/source_tests/source
+t/source_tests/harness
+t/source_tests/harness_failure
+t/source_tests/varsource
 TODO

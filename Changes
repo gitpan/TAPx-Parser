@@ -1,5 +1,37 @@
 Revision history for TAP-Parser
 
+0.50_06
+    - Fixed doc typo in examples/README [rt.cpan.org #24409]
+    - Colored test output is now the default for 'runtests' unless
+      you're running under windows or -t STDOUT is false.
+      [rt.cpan.org #24310]
+    - Removed the .t extension from t/source_tests/*.t since those are
+      'test tests' which caused false negatives when running recursive
+      tests. [Adrian Howard]
+    - Somewhere along the way, the exit status started working again.
+      Go figure.
+    - Factored color output so that disabling it under Windows is
+      cleaner.
+    - Added explicit switch to :crlf layer after open3 under Windows.
+      open3 defaults to raw mode resulting in spurious \r characters in
+      parsed input.
+    - Made Iterator do an explicit wait for subprocess termination.
+      Needed to get process status correctly on Windows.
+    - Fixed bug which didn't allow t/010-regression.t to be run directly
+      via Perl unless you specified Perl's full path.
+    - Removed SIG{CHLD} handler (which we shouldn't need I think because
+      we explicitly waitpid) and made binmode ':crlf' conditional on
+      IS_WIN32. On Mac OS these two things combined to expose a problem
+      which meant that output from test scripts was sometimes lost.
+    - Made t/110-source.t use File::Spec->catfile to build path to
+      test script.
+    - Made Iterator::FH init is_first, is_last to 0 rather than undef
+      for consistency with array iterator.
+    - Added t/120-varsource.t to test is_first and is_last semantics
+      over files with small numbers of lines.
+    - Added check for valid callback keys.
+    - Added t/130-results.t for Result classes.
+
 0.50_05 15 January 2007
     - Removed debugging code accidentally left in bin/runtests.
     - Removed 'local $/ = ...' from the iterator.  Hopefully that will fix the

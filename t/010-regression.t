@@ -1,6 +1,5 @@
 #!/usr/bin/perl -w
 
-$ENV{PATH} = '';
 unshift @INC, 't/lib';
 
 use strict;
@@ -113,7 +112,7 @@ my %samples = (
         tests_planned => 5,
         tests_run     => 5,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     simple => {
@@ -188,7 +187,7 @@ my %samples = (
         tests_planned => 5,
         tests_run     => 5,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     simple_fail => {
@@ -263,7 +262,7 @@ my %samples = (
         tests_planned => 5,
         tests_run     => 5,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     skip => {
@@ -339,7 +338,7 @@ my %samples = (
         tests_planned => 5,
         tests_run     => 5,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     skip_nomsg => {
@@ -375,7 +374,7 @@ my %samples = (
         tests_planned => 1,
         tests_run     => TRUE,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     todo_inline => {
@@ -433,7 +432,7 @@ my %samples = (
         tests_planned => 3,
         tests_run     => 3,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     duplicates => {
@@ -587,7 +586,7 @@ my %samples = (
             'Tests out of sequence.  Found (10) but expected (11)',
             'Bad plan.  You planned 10 tests but ran 11.',
         ],
-        #'exit' => 0,
+        'exit' => 0,
         wait   => 0,
     },
     no_nums => {
@@ -662,7 +661,7 @@ my %samples = (
         tests_planned => 5,
         tests_run     => 5,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     bailout => {
@@ -740,7 +739,7 @@ my %samples = (
         tests_planned => 5,
         tests_run     => 5,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     no_output => {
@@ -759,7 +758,7 @@ my %samples = (
         parse_errors  => [
             'No plan found in TAP output',
         ],
-        #'exit' => 0,
+        'exit' => 0,
         wait   => 0,
     },
     too_many => {
@@ -853,7 +852,7 @@ my %samples = (
         tests_planned => 3,
         tests_run     => 7,
         parse_errors  => ['Bad plan.  You planned 3 tests but ran 7.'],
-        #'exit'        => 4,
+        'exit'        => 4,
         wait          => NOT_ZERO,
     },
     taint => {
@@ -888,7 +887,7 @@ my %samples = (
         tests_planned => TRUE,
         tests_run     => TRUE,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     'die' => {
@@ -907,7 +906,7 @@ my %samples = (
         parse_errors  => [
             'No plan found in TAP output',
         ],
-        #'exit' => 1,
+        'exit' => 1,
         wait   => NOT_ZERO,
     },
     die_head_end => {
@@ -971,7 +970,7 @@ my %samples = (
         parse_errors  => [
             'No plan found in TAP output',
         ],
-        #'exit' => 1,
+        'exit' => 1,
         wait   => NOT_ZERO,
     },
     die_last_minute => {
@@ -1040,7 +1039,7 @@ my %samples = (
         tests_planned => 4,
         tests_run     => 4,
         parse_errors  => [],
-        #'exit'        => 1,
+        'exit'        => 1,
         wait          => NOT_ZERO,
     },
     bignum => {
@@ -1112,7 +1111,7 @@ my %samples = (
             'Tests out of sequence.  Found (136211426) but expected (4)',
             'Bad plan.  You planned 2 tests but ran 4.'
         ],
-        #'exit' => 0,
+        'exit' => 0,
         wait   => 0,
     },
     bignum_many => {
@@ -1268,7 +1267,7 @@ my %samples = (
             'Tests out of sequence.  Found (100005) but expected (11)',
             'Bad plan.  You planned 2 tests but ran 11.'
         ],
-        #'exit' => 0,
+        'exit' => 0,
         wait   => 0,
     },
     combined => {
@@ -1403,7 +1402,7 @@ my %samples = (
         tests_planned => 10,
         tests_run     => 10,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     head_end => {
@@ -1492,7 +1491,7 @@ my %samples = (
         tests_planned => 4,
         tests_run     => 4,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     head_fail => {
@@ -1581,7 +1580,7 @@ my %samples = (
         tests_planned => 4,
         tests_run     => 4,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     out_of_order => {
@@ -1790,7 +1789,7 @@ my %samples = (
             'Tests out of sequence.  Found (5) but expected (12)',
             'Tests out of sequence.  Found (7) but expected (13)',
         ],
-        #'exit' => 0,
+        'exit' => 0,
         wait   => 0,
     },
     skipall => {
@@ -1817,7 +1816,7 @@ my %samples = (
         tests_planned => 0,
         tests_run     => 0,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     skipall_nomsg => {
@@ -1844,7 +1843,7 @@ my %samples = (
         tests_planned => 0,
         tests_run     => 0,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     todo_misparse => {
@@ -1880,7 +1879,7 @@ my %samples = (
         tests_planned => TRUE,
         tests_run     => 1,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     shbang_misparse => {
@@ -1925,7 +1924,7 @@ my %samples = (
         tests_planned => 2,
         tests_run     => 2,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     switches => {
@@ -1962,7 +1961,7 @@ my %samples = (
         tests_planned => 1,
         tests_run     => TRUE,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     inc_taint => {
@@ -1999,7 +1998,7 @@ my %samples = (
         tests_planned => 1,
         tests_run     => TRUE,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
     sequence_misparse => {
@@ -2080,7 +2079,7 @@ my %samples = (
         tests_planned => 5,
         tests_run     => 5,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
 
@@ -2170,7 +2169,7 @@ my %samples = (
         tests_planned => 4,
         tests_run     => 4,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
     },
 
@@ -2212,7 +2211,7 @@ my %samples = (
         tests_planned => 1,
         tests_run     => 1,
         parse_errors  => [],
-        #'exit'        => 0,
+        'exit'        => 0,
         wait          => 0,
       },
 );

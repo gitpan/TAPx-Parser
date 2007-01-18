@@ -7,9 +7,9 @@ use lib 'lib';
 use Test::More tests => 28;
 use TAPx::Parser::Source;
 use TAPx::Parser::Source::Perl;
+use File::Spec;
 
-chdir 't' if -d 't';
-my $test = 'source_tests/source.t';
+my $test = File::Spec->catfile('t', 'source_tests', 'source');
 
 my $perl = $^X;
 
