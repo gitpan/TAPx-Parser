@@ -3,6 +3,7 @@
 unshift @INC, 't/lib';
 
 use strict;
+
 #use Test::More tests => 2567;
 use Test::More 'no_plan';
 use File::Spec;
@@ -57,6 +58,7 @@ my %samples = (
                 has_skip      => FALSE,
                 has_todo      => FALSE,
                 number        => 1,
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -67,6 +69,7 @@ my %samples = (
                 has_todo      => FALSE,
                 number        => 2,
                 description   => "Megathrusters are go",
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -77,6 +80,7 @@ my %samples = (
                 has_todo      => FALSE,
                 number        => 3,
                 description   => "Head formed",
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -87,6 +91,7 @@ my %samples = (
                 has_todo      => FALSE,
                 number        => 4,
                 description   => "Blazing sword formed",
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -97,7 +102,88 @@ my %samples = (
                 has_todo      => FALSE,
                 number        => 5,
                 description   => "Robeast destroyed",
+                is_unplanned  => FALSE,
             }
+        ],
+        plan          => '1..5',
+        passed        => [ 1 .. 5 ],
+        actual_passed => [ 1 .. 5 ],
+        failed        => [],
+        actual_failed => [],
+        todo          => [],
+        todo_passed   => [],
+        skipped       => [],
+        good_plan     => TRUE,
+        is_good_plan  => TRUE,
+        tests_planned => 5,
+        tests_run     => 5,
+        parse_errors  => [],
+        'exit'        => 0,
+        wait          => 0,
+    },
+    descriptive_trailing => {
+        results => [
+            {   actual_passed => TRUE,
+                is_actual_ok  => TRUE,
+                description   => "Interlock activated",
+                passed        => TRUE,
+                is_ok         => TRUE,
+                is_test       => TRUE,
+                has_skip      => FALSE,
+                has_todo      => FALSE,
+                number        => 1,
+                is_unplanned  => FALSE,
+            },
+            {   actual_passed => TRUE,
+                is_actual_ok  => TRUE,
+                passed        => TRUE,
+                is_ok         => TRUE,
+                is_test       => TRUE,
+                has_skip      => FALSE,
+                has_todo      => FALSE,
+                number        => 2,
+                description   => "Megathrusters are go",
+                is_unplanned  => FALSE,
+            },
+            {   actual_passed => TRUE,
+                is_actual_ok  => TRUE,
+                passed        => TRUE,
+                is_ok         => TRUE,
+                is_test       => TRUE,
+                has_skip      => FALSE,
+                has_todo      => FALSE,
+                number        => 3,
+                description   => "Head formed",
+                is_unplanned  => FALSE,
+            },
+            {   actual_passed => TRUE,
+                is_actual_ok  => TRUE,
+                passed        => TRUE,
+                is_ok         => TRUE,
+                is_test       => TRUE,
+                has_skip      => FALSE,
+                has_todo      => FALSE,
+                number        => 4,
+                description   => "Blazing sword formed",
+                is_unplanned  => FALSE,
+            },
+            {   actual_passed => TRUE,
+                is_actual_ok  => TRUE,
+                passed        => TRUE,
+                is_ok         => TRUE,
+                is_test       => TRUE,
+                has_skip      => FALSE,
+                has_todo      => FALSE,
+                number        => 5,
+                description   => "Robeast destroyed",
+                is_unplanned  => FALSE,
+            },
+            {   is_plan       => TRUE,
+                raw           => '1..5',
+                tests_planned => 5,
+                passed        => TRUE,
+                is_ok         => TRUE,
+            },
         ],
         plan          => '1..5',
         passed        => [ 1 .. 5 ],
@@ -453,6 +539,7 @@ my %samples = (
                 number        => 1,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -464,6 +551,7 @@ my %samples = (
                 number        => 2,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -475,6 +563,7 @@ my %samples = (
                 number        => 3,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -486,6 +575,7 @@ my %samples = (
                 number        => 4,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -497,6 +587,7 @@ my %samples = (
                 number        => 4,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -508,6 +599,7 @@ my %samples = (
                 number        => 5,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -519,6 +611,7 @@ my %samples = (
                 number        => 6,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -530,6 +623,7 @@ my %samples = (
                 number        => 7,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -541,6 +635,7 @@ my %samples = (
                 number        => 8,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -552,23 +647,25 @@ my %samples = (
                 number        => 9,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
-                passed        => TRUE,
-                is_ok         => TRUE,
+                passed        => FALSE,
+                is_ok         => FALSE,
                 is_test       => TRUE,
                 has_skip      => FALSE,
                 has_todo      => FALSE,
                 number        => 10,
                 description   => '',
                 explanation   => '',
+                is_unplanned  => TRUE,
             },
         ],
         plan          => '1..10',
-        passed        => [ 1 .. 4, 4 .. 10 ],
+        passed        => [ 1 .. 4, 4 .. 9 ],
         actual_passed => [ 1 .. 4, 4 .. 10 ],
-        failed        => [],
+        failed        => [ 10 ],
         actual_failed => [],
         todo          => [],
         todo_passed   => [],
@@ -778,6 +875,7 @@ my %samples = (
                 has_skip      => FALSE,
                 has_todo      => FALSE,
                 number        => 1,
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -788,6 +886,7 @@ my %samples = (
                 has_todo      => FALSE,
                 number        => 2,
                 description   => "",
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -798,6 +897,7 @@ my %samples = (
                 has_todo      => FALSE,
                 number        => 3,
                 description   => "",
+                is_unplanned  => FALSE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -808,6 +908,7 @@ my %samples = (
                 has_todo      => FALSE,
                 number        => 4,
                 description   => "",
+                is_unplanned  => TRUE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -818,6 +919,7 @@ my %samples = (
                 has_todo      => FALSE,
                 number        => 5,
                 description   => "",
+                is_unplanned  => TRUE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -828,6 +930,7 @@ my %samples = (
                 has_todo      => FALSE,
                 number        => 6,
                 description   => "",
+                is_unplanned  => TRUE,
             },
             {   actual_passed => TRUE,
                 is_actual_ok  => TRUE,
@@ -838,6 +941,7 @@ my %samples = (
                 has_todo      => FALSE,
                 number        => 7,
                 description   => "",
+                is_unplanned  => TRUE,
             },
         ],
         plan          => '1..3',
@@ -1604,7 +1708,7 @@ my %samples = (
                 has_skip      => FALSE,
                 has_todo      => FALSE,
                 number        => 3,
-                description   =>
+                description =>
                   '- Test that passing arguments as references work',
                 explanation => '',
             },
@@ -1743,7 +1847,7 @@ my %samples = (
                 has_skip      => FALSE,
                 has_todo      => FALSE,
                 number        => 14,
-                description   =>
+                description =>
                   '- Check so that tid for threads work for main thread',
                 explanation => '',
             },
@@ -1755,7 +1859,7 @@ my %samples = (
                 has_skip      => FALSE,
                 has_todo      => FALSE,
                 number        => 15,
-                description   =>
+                description =>
                   '- Check so that tid for threads work for main thread',
                 explanation => '',
             },
@@ -2179,7 +2283,7 @@ my %samples = (
                 raw        => 'this is junk',
             },
             {   is_comment => TRUE,
-                comment    =>
+                comment =>
                   "this is a comment",
             },
             {   is_plan       => TRUE,
@@ -2213,7 +2317,7 @@ my %samples = (
         parse_errors  => [],
         'exit'        => 0,
         wait          => 0,
-      },
+    },
 );
 
 my %HANDLER_FOR = (
@@ -2224,18 +2328,19 @@ my %HANDLER_FOR = (
 
 foreach my $test ( sort keys %samples ) {
 
-    #next unless 'stdout_stderr' eq $test;
+    #next unless 'duplicates' eq $test;
     my $details = $samples{$test};
     my $results = delete $details->{results};
     my $args    = delete $details->{__ARGS__} || { switches => '' };
 
     # the following acrobatics are necessary to make it easy for the
     # Test::Builder::failure_output() method to be overridden when
-    # TAPx::Parser is not installed.  Otherwise, these tests will fail. 
-    my @switches = 'ARRAY' eq ref $args->{switches} 
-         ? @{ $args->{switches} }
-         : $args->{switches};
-    $args->{switches} = [ '-Ilib',  @switches ];
+    # TAPx::Parser is not installed.  Otherwise, these tests will fail.
+    my @switches =
+      'ARRAY' eq ref $args->{switches}
+      ? @{ $args->{switches} }
+      : $args->{switches};
+    $args->{switches} = [ '-Ilib', @switches ];
 
     $args->{source} = File::Spec->catfile( $SAMPLE_TESTS, $test );
 
@@ -2284,11 +2389,13 @@ sub analyze_test {
     my $count  = 1;
     while ( defined( my $result = $parser->next ) ) {
         my $expected = shift @$results;
-        my $desc     = $result->is_test
-            ? $result->description
-            : $result->raw;
+        my $desc =
+            $result->is_test
+          ? $result->description
+          : $result->raw;
         $desc = $result->plan if $result->is_plan && $desc =~ /SKIP/i;
-        ok defined $expected, "$test $count We should have a result for $desc";
+        ok defined $expected,
+          "$test $count We should have a result for $desc";
         $count++;
         while ( my ( $method, $answer ) = each %$expected ) {
             if ( my $handler = $HANDLER_FOR{ $answer || '' } ) {    # yuck

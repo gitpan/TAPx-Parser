@@ -9,11 +9,11 @@ TAPx::Parser::Aggregator - Aggregate TAPx::Parser results.
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 =head1 SYNOPSIS
 
@@ -61,6 +61,8 @@ BEGIN {
       todo
       todo_passed
       total
+      wait
+      exit
     );
     $SUMMARY_METHOD_FOR{total} = 'tests_run';
 
@@ -194,6 +196,10 @@ for an explanation of description.
 
 =item * todo_passed
 
+=item * wait
+
+=item * exit
+
 =back
 
 For example, to find out how many tests unexpectedly succeeded (TODO tests
@@ -201,6 +207,10 @@ which passed when they shouldn't):
 
  my $count        = $aggregate->todo_passed;
  my @descriptions = $aggregate->todo_passed;
+
+Note that C<wait> and C<exit> are the totals of the wait and exit
+statuses of each of the tests. These values are totalled only to provide
+a true value if any of them are non-zero.
 
 =cut
 
@@ -231,7 +241,11 @@ failed, any TODO tests unexpectedly succeeded, or any parse errors.
 
 sub has_problems {
     my $self = shift;
-    return $self->failed || $self->todo_passed || $self->parse_errors;
+    return $self->failed
+      || $self->todo_passed
+      || $self->parse_errors
+      || $self->exit
+      || $self->wait;
 }
 
 ##############################################################################
@@ -246,7 +260,8 @@ succeeded.  Will now issue a warning and call C<todo_passed>.
 =cut
 
 sub todo_failed {
-    warn '"todo_failed" is deprecated.  Please use "todo_passed".  See the docs.';
+    warn
+      '"todo_failed" is deprecated.  Please use "todo_passed".  See the docs.';
     goto &todo_passed;
 }
 

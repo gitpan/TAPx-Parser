@@ -1,6 +1,69 @@
 Revision history for TAP-Parser
 
-0.50_06
+0.50_07 5 March 2007
+    - Fixed bug where we erroneously checked the test number instead of number
+      of tests run to determine if we've run more tests than we planned.
+    - Add a --directives switch to 'runtests' which only shows test results
+      with directives (such as 'TODO' or 'SKIP').
+    - Removed some dead code from TAPx::Parser.
+    - Added color support for Windows using Win32::Console.
+    - Made Color::failure_output reset colors before printing
+      the trailing newline.
+    - Corrected some issues with the 'runtests' docs and removed some
+      performance notes which no longer seem accurate.
+    - Fixed bug whereby if tests without file extensions were included then
+      the spacing of the result leaders would be off.
+    - execrc file is now a YAML file.
+    - Removed white background on the test failures.  It was too garish for
+      me.  Just more proof that we need better ways of overriding color
+      support.
+    - Started work on TAPx::Harness::Compatible. Right now it's mainly just
+      a direct lift of Test::Harness to make sure the tests work.
+    - Commented out use Data::Dumper::Simple in T::Harness.pm - it's not
+      a core module.
+    - Added next_raw to TAPx::Parser::Iterator which skips any fixes for
+      quirky TAP that are implemented by next. Used to support
+      TAPx::Harness::Compatible::Iterator
+    - Applied our version number to all T::H::Compatible modules
+    - Removed T::H::C::Assert. It's documented as being private to
+      Test::Harness and we're not going to need it.
+    - Refactored runtests to call aggregate_tests to expose the
+      interface we need for the compatibility layer.
+    - Make it possible to pass an end time to summary so that it needn't
+      be called immediately after the tests complete.
+    - Moved callback handling into TAPx::Base and altered TAPx::Parser
+      to use it.
+    - Made TAPx::Harness into a subclass of TAPx::Base and implemented
+      made_parser callback.
+    - Moved the dispatch of callbacks out of run and into next so that
+      they're called when TAPx::Harness iterates through the results.
+    - Implemented PERL_TEST_HARNESS_DUMP_TAP which names a directory
+      into which the raw TAP of any tests run via TAPx::Harness will
+      be written.
+    - Rewrote the TAPx::Grammar->tokenize method to return a
+      TAPx::Parser::Result object.  Code is much cleaner now.
+    - Moved the official grammar from TAPx::Parser to TAPx::Parser::Grammar,
+      provided a link and updated the grammar.
+    - Fixed bug where a properly escaped '# TODO' line in a test description
+      would still be reported as a TODO test.
+    - Added patches/ExtUtils-MakeMaker-6.31.patch - a patch against EUMM
+      that makes test_harness use TAPx::Harness instead of Test::Harness
+      if PERL_EUMM_USE_TAPX is true and TAPx::Harness is installed. In
+      other words cause 'make test' for EUMM based models to use
+      TAPx::Harness.
+    - Added support for timer option to TAPx::Harness which causes the
+      elapsed time for each test to be displayed.
+    - Setup tapx-dev@hexten.net mailing list.
+    - Fixed accumulating @$exec bug in TAPx::Harness.
+    - Made runtests pass '--exec' option as an array.
+    - (#24679) TAPx::Harness now reports failure for tests that die
+      after completing all subtests.
+    - Added in_todo attribute on TAPx::Parser which is true while the
+      most recently seen test was a TODO.
+    - (#24728) TAPx::Harness now supresses diagnostics from failed
+      TODOs. Not sure if the semantics of this are correct yet.
+      
+0.50_06 18 January 2007
     - Fixed doc typo in examples/README [rt.cpan.org #24409]
     - Colored test output is now the default for 'runtests' unless
       you're running under windows or -t STDOUT is false.
@@ -13,7 +76,7 @@ Revision history for TAP-Parser
     - Factored color output so that disabling it under Windows is
       cleaner.
     - Added explicit switch to :crlf layer after open3 under Windows.
-      open3 defaults to raw mode resulting in spurious \r characters in
+      open3 defaults to raw mode resulting in spurious \r characters input
       parsed input.
     - Made Iterator do an explicit wait for subprocess termination.
       Needed to get process status correctly on Windows.

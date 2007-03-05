@@ -49,7 +49,6 @@ is [ $parser->parse_errors ]->[1],
   'Bad plan.  You planned 3 tests but ran 4.',
   '... and telling us we ran the wrong number of tests.';
 
-
 $parser = _parser(<<'END_TAP');
 ok 1 - input file opened
 not ok 2 - first line of the input valid # todo some data
@@ -87,8 +86,7 @@ not ok 2 - first line of the input valid # todo some data
 ok read the rest of the file
 # this is ...
 END_TAP
-my $expected;
-eval { $expected = $parser->_lex };
+eval { $parser->run };
 ok !$@, 'We can mix and match the presence of test numbers';
 
 $parser = _parser(<<'END_TAP');
@@ -110,7 +108,7 @@ END_TAP
 
 is $parser->parse_errors, 2,
   'Having two errors in the TAP should result in two errors (duh)';
-$expected = [
+my $expected = [
     'Tests out of sequence.  Found (2) but expected (3)',
     'No plan found in TAP output'
 ];
@@ -161,4 +159,5 @@ ok 1 - input file opened
 1..1
 END_TAP
 
-ok $parser->is_good_plan, '... and it should return true if the plan is correct';
+ok $parser->is_good_plan,
+  '... and it should return true if the plan is correct';

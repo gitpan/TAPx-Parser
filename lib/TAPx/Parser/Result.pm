@@ -25,11 +25,11 @@ TAPx::Parser::Result - TAPx::Parser output
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 =head2 DESCRIPTION
 
@@ -167,7 +167,7 @@ test result returns true.  This is merely provided as a convenient shortcut.
 
 =cut
 
-sub is_ok { 1 };
+sub is_ok {1}
 
 ##############################################################################
 
@@ -181,5 +181,50 @@ sub passed {
     warn 'passed() is deprecated.  Please use "is_ok()"';
     shift->is_ok;
 }
+
+##############################################################################
+
+=head3 C<has_directive>
+
+  if ( $result->has_directive ) {
+     ...
+  }
+
+Indicates whether or not the given result has a TODO or SKIP directive.
+
+=cut
+
+sub has_directive {
+    my $self = shift;
+    return ($self->has_todo || $self->has_skip) || '';
+}
+
+##############################################################################
+
+=head3 C<has_todo>
+
+ if ( $result->has_todo ) {
+     ...
+ }
+
+Indicates whether or not the given result has a TODO directive.
+
+=cut
+
+sub has_todo { 'TODO' eq (shift->{directive} || '') }
+
+##############################################################################
+
+=head3 C<has_skip>
+
+ if ( $result->has_skip ) {
+     ...
+ }
+
+Indicates whether or not the given result has a SKIP directive.
+
+=cut
+
+sub has_skip { 'SKIP' eq (shift->{directive} || '') }
 
 1;

@@ -12,11 +12,11 @@ TAPx::Parser::Result::Comment - Comment result token.
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 =head1 DESCRIPTION
 
@@ -55,7 +55,7 @@ Note that this method merely returns the comment preceded by a '# '.
 
 =cut
 
-sub comment    { shift->{comment} }
-sub as_string  { shift->{raw} }
+sub comment   { shift->{comment} }
+sub as_string { shift->{raw} }
 
 1;

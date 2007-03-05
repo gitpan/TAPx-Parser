@@ -12,11 +12,11 @@ TAPx::Parser::Result::Bailout - Bailout result token.
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 =head1 DESCRIPTION
 

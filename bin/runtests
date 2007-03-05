@@ -5,12 +5,14 @@ eval 'exec /usr/bin/perl -w -S $0 ${1+"$@"}'
 
 use strict;
 use Pod::Usage 1.12;
-
+use TAPx::Harness;
+use File::Find;
+use File::Spec;
 use Getopt::Long;
 
 # Allow cuddling the paths with the -I
 @ARGV = map { /^(-I)(.+)/ ? ( $1, $2 ) : $_ } @ARGV;
-my $color_default = -t STDOUT && !($^O =~ /MSWin32/);
+my $color_default = -t STDOUT && !( $^O =~ /MSWin32/ );
 
 Getopt::Long::Configure( 'no_ignore_case', 'bundling' );
 GetOptions(
@@ -28,6 +30,7 @@ GetOptions(
     'e|exec=s'   => \my $EXEC,
     'execrc=s'   => \my $EXECRC,
     'I=s@'       => \my @INCLUDES,
+    'directives' => \my $DIRECTIVES,
     'h|help|?'   => sub { pod2usage( { -verbose => 1 } ); exit },
     'H|man'      => sub { pod2usage( { -verbose => 2 } ); exit },
 
@@ -39,15 +42,13 @@ GetOptions(
 );
 
 if ( !defined $COLOR ) {
-     $COLOR = $color_default;
+    $COLOR = $color_default;
 }
 
 # XXX otherwise, diagnostics and failure messages are out of sequence
 # or we can't suppress STDERR on quiet
 #$MERGE = 1 if $FAILURES || $QUIET || $REALLY_QUIET;
 
-use lib 'lib';
-use TAPx::Harness;
 my $harness_class = 'TAPx::Harness';
 if ($COLOR) {
     require TAPx::Harness::Color;
@@ -58,9 +59,6 @@ if ($HARNESS) {
     die "Cannot use harness ($HARNESS): $@" if $@;
     $harness_class = $HARNESS;
 }
-
-use File::Find;
-use File::Spec;
 
 my @tests = get_tests(@ARGV);
 
@@ -76,13 +74,14 @@ if ( $WARNINGS_FAIL && $WARNINGS_WARN ) {
 my %args;
 $args{lib}          = get_libs();
 $args{switches}     = get_switches();
-$args{verbose}      = $VERBOSE  if $VERBOSE;
+$args{verbose}      = $VERBOSE if $VERBOSE;
 $args{failures}     = $FAILURES if $FAILURES;
-$args{quiet}        = 1         if $QUIET;
-$args{really_quiet} = 1         if $REALLY_QUIET;
-$args{errors}       = 1         if $PARSE;
-$args{exec}         = $EXEC     if $EXEC;
-$args{execrc}       = $EXECRC   if $EXECRC;
+$args{quiet}        = 1 if $QUIET;
+$args{really_quiet} = 1 if $REALLY_QUIET;
+$args{errors}       = 1 if $PARSE;
+$args{exec}         = [ split( / /, $EXEC ) ] if $EXEC;
+$args{execrc}       = $EXECRC if $EXECRC;
+$args{directives}   = 1 if $DIRECTIVES;
 my $harness = $harness_class->new( \%args );
 $harness->runtests(@tests);
 
@@ -197,6 +196,7 @@ Boolean options
  -q,  --quiet       Suppress some test output while running tests.
  -Q,  --QUIET       Only print summary results.
  -p,  --parse       Show full list of TAP parse errors, if any.
+      --directives  Only show results with TODO or SKIP directives.
  -T                 Enable tainting checks.
  -t                 Enable tainting warnings.
  -W                 Enable fatal warnings.
@@ -234,13 +234,8 @@ Specifying the C<--color> or C<-c> switch is the same as:
 
  runtests --harness TAPx::Harness::Color
 
-Note that this only has an effect if the C<--verbose> or C<--failures> options
-are set.
-
-By default, colored test output is the default, but if you are running Windows
-or output is not to a terminal, color is disabled.  You can override this by
-adding the C<--color> switch, but we still disable color under Windows and
-then you'll get a warning about it.
+Colored test output is the default, but if output is not to a terminal, color
+is disabled.  You can override this by adding the C<--color> switch.
 
 =head2 C<--exec>
 
@@ -259,20 +254,11 @@ Location of 'execrc' file.  See L<TAPx::Harness> for more information.
 =head1 PERFORMANCE
 
 Because of its design, C<TAPx::Parser> collects more information than
-C<Test::Harness>.  However, the trade-off is performance.  Using C<runtests>
-is often slower than the C<prove> utility which is bundled with
-C<Test::Harness>.  For small tests suites, this is usually not a problem.
-However, enabling the C<--quiet> or C<--QUIET> options can speed up the test
-suite considerably.  In fact, with the C<--QUIET> option, test suites often
-run faster than with C<prove>.
-
-Use of the C<--exec> switch, even with Perl tests, can provide a huge
-performance boost and the tests will almost certainly run faster than
-C<Test::Harness>/C<prove>.  This is because if this switch is not supplied,
-the harness must try to open the file and examine its shebang line, determine
-how it's to be invoked, and with which switches.  Thus, every file is opened
-twice.  With C<--exec>, you only need to open each file once, thus saving a
-lot of I/O.
+C<Test::Harness>.  However, the trade-off is sometimes slightly slower
+performance than when using the C<prove> utility which is bundled with
+L<Test::Harness>.  For small tests suites, this is usually not a problem.
+However, enabling the C<--quiet> or C<--QUIET> options can sometimes speed up
+the test suite, sometimes running faster than C<prove>.
 
 =head1 SEE ALSO
 

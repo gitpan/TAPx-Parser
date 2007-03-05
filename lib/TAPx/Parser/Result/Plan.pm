@@ -12,11 +12,11 @@ TAPx::Parser::Result::Plan - Plan result token.
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 =head1 DESCRIPTION
 
@@ -87,6 +87,13 @@ If a SKIP directive is included with the plan, this method will return it.
 sub directive { shift->{directive} }
 
 ##############################################################################
+
+=head3 C<has_skip>
+
+  if ( $result->has_skip ) { ... }
+
+Returns a boolean value indicating whether or not this test has a SKIP
+directive.
 
 =head3 C<explanation>
 

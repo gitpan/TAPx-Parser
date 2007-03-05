@@ -3,14 +3,17 @@ package TAPx::Harness;
 use strict;
 use warnings;
 use Benchmark;
+use File::Spec;
+use File::Path;
 
+use TAPx::Base;
 use TAPx::Parser;
 use TAPx::Parser::Aggregator;
+use TAPx::Parser::YAML;
 
-use vars qw($VERSION);
+use vars qw($VERSION @ISA);
 
-use constant QUOTED =>
-  qr/(?:(?:\")(?:[^\\\"]*(?:\\.[^\\\"]*)*)(?:\")|(?:\')(?:[^\\\']*(?:\\.[^\\\']*)*)(?:\')|(?:\`)(?:[^\\\`]*(?:\\.[^\\\`]*)*)(?:\`))/;
+@ISA = qw(TAPx::Base);
 
 =head1 NAME
 
@@ -18,11 +21,11 @@ TAPx::Harness - Run Perl test scripts with statistics
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 $ENV{HARNESS_ACTIVE}  = 1;
 $ENV{HARNESS_VERSION} = $VERSION;
@@ -32,6 +35,14 @@ END {
     # For VMS.
     delete $ENV{HARNESS_ACTIVE};
     delete $ENV{HARNESS_VERSION};
+}
+
+my $TIME_HIRES;
+
+BEGIN {
+    eval 'use Time::HiRes qw(time)';
+    $TIME_HIRES = !$@;
+
 }
 
 =head1 DESCRIPTION
@@ -81,13 +92,15 @@ BEGIN {
             @switches = grep { !$found{$_}++ } @switches;
             return \@switches;
         },
+        directives   => sub { shift; shift },
         verbose      => sub { shift; shift },
+        timer        => sub { shift; shift },
         failures     => sub { shift; shift },
         errors       => sub { shift; shift },
         quiet        => sub { shift; shift },
         really_quiet => sub { shift; shift },
         exec         => sub { shift; shift },
-        execrc       => sub {
+        execrc => sub {
             my ( $self, $execrc ) = @_;
             unless ( -f $execrc ) {
                 $self->_error("Cannot find execrc ($execrc)");
@@ -155,6 +168,10 @@ hashref whose allowed keys are:
 
 Print individual test results to STDOUT.
 
+=item * C<timer>
+
+Append run time for each test to output. Uses Time::HiRes if available.
+
 =item * C<failures>
 
 Only show test failures (this is a no-op if C<verbose> is selected).
@@ -199,72 +216,67 @@ true:
 
   errors => 1
 
+=item * C<directives>
+
+If set to a true value, only test results with directives will be displayed.
+This overrides other settings such as C<verbose> or C<failures>.
+
 =back
 
 =cut
 
-sub new {
-    my ( $class, $arg_for ) = @_;
+# new supplied by TAPx::Base
 
-    # lib
-    # verbose
-    # run_with  (pugs -Iblib6/lib t/general/basic.t)
-    my $self = bless {}, $class;
-    return $self->_initialize($arg_for);
-}
+{
+    my @legal_callback = qw(
+      made_parser
+    );
 
-sub _initialize {
-    my ( $self, $arg_for ) = @_;
-    $arg_for ||= {};
-    my %arg_for = %$arg_for;    # force a shallow copy
-    foreach my $name ( keys %VALIDATION_FOR ) {
-        my $property = delete $arg_for{$name};
-        if ( defined $property ) {
-            my $validate = $VALIDATION_FOR{$name};
+    sub _initialize {
+        my ( $self, $arg_for ) = @_;
+        $arg_for ||= {};
+        $self->SUPER::_initialize( $arg_for, \@legal_callback );
+        my %arg_for = %$arg_for;    # force a shallow copy
 
-            my $value = $self->$validate($property);
-            if ( $self->_error ) {
-                $self->_croak;
+        foreach my $name ( keys %VALIDATION_FOR ) {
+            my $property = delete $arg_for{$name};
+            if ( defined $property ) {
+                my $validate = $VALIDATION_FOR{$name};
+
+                my $value = $self->$validate($property);
+                if ( $self->_error ) {
+                    $self->_croak;
+                }
+                $self->$name($value);
             }
-            $self->$name($value);
         }
+        if ( my @props = keys %arg_for ) {
+            $self->_croak("Unknown arguments to TAPx::Harness::new (@props)");
+        }
+        $self->_read_execrc;
+        $self->quiet(0) unless $self->quiet;    # suppress unit warnings
+        $self->really_quiet(0) unless $self->really_quiet;
+        return $self;
     }
-    if ( my @props = keys %arg_for ) {
-        $self->_croak("Unknown arguments to TAPx::Harness::new (@props)");
-    }
-    $self->_read_execrc;
-    $self->quiet(0)        unless $self->quiet;       # suppress unit warnings
-    $self->really_quiet(0) unless $self->really_quiet;
-    return $self;
 }
 
 sub _read_execrc {
     my $self = shift;
     $self->_execrc( {} );
     my $execrc = $self->execrc or return;
-    local *FH;
-    open FH, $execrc
-      or $self->_error("Could not open execrc ($execrc) for reading: $!");
-    my $quoted = QUOTED;
-    my $comma  = qr/\s*(?:,|=>)\s*/;
-    my %exec_for;
+    my $data   = TAPx::Parser::YAML->read($execrc);
+    my $tests  = $data->[0]{tests};
 
-    while ( my $line = <FH> ) {
-        next if $line =~ /^\s*$/;    # ignore blank lines
-        next if $line =~ /^\s*#/;    # ignore comments
-        next unless $line =~ /^\s*($quoted)$comma($quoted)\s*#?/;
-        my ( $exec, $file ) = ( $1, $2 );
-        s/^['"]|['"]$//g foreach $file, $exec;    # strip quotes
-        unless ( $exec =~ /%s/ ) {
-            $exec .= ' "%s"';                     # make the %s optional
-        }
-        if ( '*' eq $file ) {
+    my %exec_for;
+    foreach my $exec (@$tests) {
+        if ( '*' eq $exec->[-1] ) {
+            pop @$exec;
 
             # don't override command line
             $self->exec($exec) unless $self->exec;
         }
         else {
-            $exec_for{$file} = $exec;
+            $exec_for{ $exec->[-1] } = $exec;
         }
     }
     $self->_execrc( \%exec_for );
@@ -286,6 +298,11 @@ information.
 
 Tests will be run in the order found.
 
+If the environment variable PERL_TEST_HARNESS_DUMP_TAP is defined it
+should name a directory into which a copy of the raw TAP for each test
+will be written. TAP is written to files named for each test.
+Subdirectories will be created as needed.
+
 =cut
 
 sub runtests {
@@ -293,10 +310,30 @@ sub runtests {
 
     my $aggregate = TAPx::Parser::Aggregator->new;
 
+    my $results = $self->aggregate_tests( $aggregate, @tests );
+
+    $self->summary($results);
+}
+
+=head3 C<aggregate_tests>
+
+  $harness->aggregate_tests( $aggregate, @tests );
+
+Tests will be run in the order found.
+
+=cut
+
+sub aggregate_tests {
+    my ( $self, $aggregate, @tests ) = @_;
+
     my $longest = 0;
 
+    my $tests_without_extensions = 0;
     foreach my $test (@tests) {
         $longest = length $test if length $test > $longest;
+        if ( $test !~ /\.\w+$/ ) {
+            $tests_without_extensions = 1;
+        }
     }
     $self->_longest($longest);
 
@@ -304,20 +341,25 @@ sub runtests {
 
     my $really_quiet = $self->really_quiet;
     foreach my $test (@tests) {
-        my $periods = '.' x ( $longest + 4 - length $test );
-        my $name = $test;
-        $name =~ s/\.\w+$//;    # strip the .t or .pm
+        my $extra = 0;
+        my $name  = $test;
+        unless ($tests_without_extensions) {
+            if ( $name =~ s/(\.\w+)$// ) {    # strip the .t or .pm
+                $extra = length $1;
+            }
+        }
+        my $periods = '.' x ( $longest + $extra + 4 - length $test );
 
         my $parser = $self->_runtest( "$name$periods", $test );
         $aggregate->add( $test, $parser );
     }
 
-    $self->summary(
-        {   start     => $start_time,
-            aggregate => $aggregate,
-            tests     => \@tests
-        }
-    );
+    return {
+        start     => $start_time,
+        end       => Benchmark->new,
+        aggregate => $aggregate,
+        tests     => \@tests
+    };
 }
 
 ##############################################################################
@@ -375,14 +417,18 @@ sub summary {
     my ( $self, $arg_for ) = @_;
     my ( $start_time, $aggregate, $tests )
       = @$arg_for{qw< start aggregate tests >};
-    my $runtime = timestr( timediff( Benchmark->new, $start_time ), 'nop' );
+
+    my $end_time = $arg_for->{end} || Benchmark->new;
+
+    my $runtime = timestr( timediff( $end_time, $start_time ), 'nop' );
 
     my $total  = $aggregate->total;
     my $passed = $aggregate->passed;
-    my $failed = $aggregate->failed;
-    my $errors = $aggregate->parse_errors;
 
-    if ( $total && $total == $passed ) {
+    # TODO: Check this condition still works when all subtests pass but
+    # the exit status is nonzero
+
+    if ( $total && $total == $passed && !$aggregate->has_problems ) {
         $self->output("All tests successful.\n");
     }
     if (   $total != $passed
@@ -402,6 +448,12 @@ sub summary {
                 "  TODO passed:   "
             );
             $self->_output_summary_failure( 'skipped', "  Tests skipped: " );
+
+            if ( my $exit = $parser->exit ) {
+                $self->_summary_test_header( $test, $parser );
+                $self->failure_output("  Non-zero exit status: $exit\n");
+            }
+
             if ( my @errors = $parser->parse_errors ) {
                 $self->_summary_test_header( $test, $parser );
                 if ( $self->errors || 1 == @errors ) {
@@ -452,9 +504,7 @@ sub _summary_test_header {
     my $output = $self->_get_output_method($parser);
     $self->$output(
         sprintf "$test$spaces(Wstat: %d Tests: %d Failed: %d)\n",
-        $parser->wait,
-        $parser->tests_run,
-        scalar $parser->failed
+        $parser->wait, $parser->tests_run, scalar $parser->failed
     );
     $self->_printed_summary_header(1);
 }
@@ -582,24 +632,52 @@ called to spit out the list of failed tests.
 sub output_test_failure {
     my ( $self, $parser ) = @_;
     return if $self->really_quiet;
-    my $total  = $parser->tests_run;
+
+    my $tests_run     = $parser->tests_run;
+    my $tests_planned = $parser->tests_planned;
+
+    my $total =
+      defined $tests_planned
+      ? $tests_planned
+      : $tests_run;
+
     my $passed = $parser->passed;
-    my $failed = $parser->failed;
-    my $flist  = join ", " => $self->range( $parser->failed );
-    $self->failure_output("Failed $failed/$total tests");
-    if ( !$total ) {
-        $self->failure_output("\nNo test run!");
+
+    # The total number of fails includes any tests that were planned but
+    # didn't run
+    my $failed = $parser->failed + $total - $tests_run;
+    my $exit   = $parser->exit;
+
+    # TODO: $flist isn't used anywhere
+    # my $flist  = join ", " => $self->range( $parser->failed );
+
+    if ( my $exit = $parser->exit ) {
+        my $wstat = $parser->wait;
+        my $status = sprintf( "%d (wstat %d, 0x%x)", $exit, $wstat, $wstat );
+        $self->failure_output(" Dubious, test returned $status\n");
+    }
+
+    if ( $failed == 0 ) {
+        $self->failure_output(" All $total subtests passed ");
+    }
+    else {
+        $self->failure_output(" Failed $failed/$total subtests ");
+        if ( !$total ) {
+            $self->failure_output("\nNo tests run!");
+        }
     }
 
     if ( my $skipped = $parser->skipped ) {
         $passed -= $skipped;
-        my $test = $skipped > 1 ? 'tests' : 'test';
+        my $test = 'subtest' . ( $skipped != 1 ? 's' : '' );
         $self->output("\n\t(less $skipped skipped $test: $passed okay)");
     }
+
     if ( my $failed = $parser->todo_passed ) {
         my $test = $failed > 1 ? 'tests' : 'test';
         $self->output("\n\t($failed TODO $test unexpectedly succeeded)");
     }
+
     $self->output("\n");
 }
 
@@ -608,25 +686,33 @@ sub _runtest {
 
     my $execrc       = $self->_execrc;
     my $really_quiet = $self->really_quiet;
+    my $show_count   = $self->_should_show_count;
     $self->output($leader) unless $really_quiet;
-    my $show_count = !$self->verbose && -t STDOUT;
 
     my %args = ( source => $test );
     my @switches = $self->lib if $self->lib;
     push @switches => $self->switches if $self->switches;
     $args{switches} = \@switches;
 
-    {
-        if ( my $exec = $execrc->{$test} || $self->exec ) {
-            $args{exec} = [ $exec, $test ];
-            delete $args{source};
-        }
+    if ( my $exec = $execrc->{$test} ) {
+        $args{exec} = $exec;
+        delete $args{source};
     }
+    elsif ( $exec = $self->exec ) {
+        $args{exec} = [ @$exec, $test ];
+        delete $args{source};
+    }
+
+    $args{spool} = $self->_open_spool($test);
+
     my $parser = TAPx::Parser->new( \%args );
+
+    $self->_make_callback( 'made_parser', $parser );
 
     my $plan = '';
     $self->_newline_printed(0);
-    my $output = 'output';
+    my $start_time = time();
+    my $output     = 'output';
     while ( defined( my $result = $parser->next ) ) {
         $output = $self->_get_output_method($parser);
         if ( $result->is_bailout ) {
@@ -644,8 +730,11 @@ sub _runtest {
               unless $really_quiet;
             $self->_newline_printed(0);
         }
-        $self->_process($result);
+        $self->_process( $parser, $result );
     }
+
+    $self->_close_spool;
+
     if ($show_count) {
         my $spaces = ' ' x (
             1 + length($leader) + length($plan) + length( $parser->tests_run )
@@ -653,7 +742,17 @@ sub _runtest {
         $self->$output("\r$spaces\r$leader") unless $really_quiet;
     }
     if ( !$parser->has_problems ) {
-        $self->output("ok\n") unless $really_quiet;
+        unless ($really_quiet) {
+            my $time_report = '';
+            if ( $self->timer ) {
+                my $elapsed = time - $start_time;
+                $time_report = $TIME_HIRES
+                  ? sprintf( ' %8d ms', $elapsed * 1000 )
+                  : sprintf( ' %8s s', $elapsed || '<1' );
+            }
+
+            $self->output("ok$time_report\n");
+        }
     }
     else {
         $self->output_test_failure($parser);
@@ -661,10 +760,40 @@ sub _runtest {
     return $parser;
 }
 
+sub _open_spool {
+    my $self = shift;
+    my $test = shift;
+
+    if ( my $spool_dir = $ENV{PERL_TEST_HARNESS_DUMP_TAP} ) {
+        my $spool = File::Spec->catfile( $spool_dir, $test );
+
+        # Make the directory
+        my ( $vol, $dir, $file ) = File::Spec->splitpath($spool);
+        my $path = File::Spec->catdir( $vol, $dir );
+        eval { mkpath($path) };
+        $self->_croak($@) if $@;
+
+        open( my $spool_handle, '>', $spool )
+          or $self->_croak(" Can't write $spool ( $! ) ");
+        return $self->{spool} = $spool_handle;
+    }
+
+    return;
+}
+
+sub _close_spool {
+    my $self = shift;
+
+    if ( my $spool_handle = delete $self->{spool} ) {
+        close($spool_handle)
+          or $self->_croak(" Error closing TAP spool file( $! ) \n ");
+    }
+}
+
 sub _process {
-    my ( $self, $result ) = @_;
+    my ( $self, $parser, $result ) = @_;
     return if $self->really_quiet;
-    if ( $self->_should_display($result) ) {
+    if ( $self->_should_display( $parser, $result ) ) {
         unless ( $self->_newline_printed ) {
             $self->output("\n") unless $self->quiet;
             $self->_newline_printed(1);
@@ -678,12 +807,25 @@ sub _get_output_method {
     return $parser->has_problems ? 'failure_output' : 'output';
 }
 
+# XXX this really needs some cleanup!
 sub _should_display {
-    my ( $self, $result ) = @_;
+    my ( $self, $parser, $result ) = @_;
+    if ( $self->directives ) {
+        return $result->has_directive;
+    }
     return if $self->really_quiet;
     return $self->verbose && !$self->failures
-      || ( $result->is_comment && !$self->quiet )
+      || ( $result->is_comment
+        && !$self->quiet
+        && ( $result->is_test || !$parser->in_todo ) )
       || $self->_should_show_failure($result);
+}
+
+sub _should_show_count {
+
+    # we need this because if someone tries to redirect the output, it can get
+    # very garbled from the carriage returns (\r) in the count line.
+    return !shift->verbose && -t STDOUT;
 }
 
 sub _should_show_failure {
@@ -697,36 +839,50 @@ sub _croak {
     unless ($message) {
         $message = $self->_error;
     }
-    require Carp;
-    Carp::croak($message);
+    $self->SUPER::_croak($message);
 }
 
 =head1 USING EXECRC
 
+B<WARNING>:  this functionality is still experimental.  While we intend to
+support it, the file format may change.
+
 Sometimes you want to use different executables to run different tests.  If
-that's the case, you'll need to create an C<execrc> file.  The format looks
-like the following:
+that's the case, you'll need to create an C<execrc> file.  This file should be
+a YAML file.  This should be representative a hash with one key, C<tests>,
+whose value is an array of array references.  Each terminating array reference
+should be a list of the exact arguments which eventually get executed.
 
- '/usr/bin/perl -wT' => '*'   # default for all programs
+ ---
+ tests:
+ # this is the default for all files
+   -
+     - /usr/bin/perl
+     - -wT
+     - *
+ 
+ # whoops!  We have a ruby test here!
+   -
+     - /usr/bin/ruby
+     - t/ruby.t
+ 
+ # let's test some web pages
+   -
+     - /usr/bin/perl
+     - -w
+     - bin/test_html.pl
+     - http://www.google.com/
+   -
+     - /usr/bin/perl
+     - -w
+     - bin/test_html.pl
+     - http://www.yahoo.com/
 
- # case-by-case handling
-
- '/usr/bin/perl -w' => 't/not_taint_safe.t'
- '/usr/bin/ruby -w' => 't/test_is_written_in_ruby.t'
-
- # drive the argument through a different program:
- '/usr/bin/perl test_html.pl' => 'http://www.google.com/'
-
-The left argument (LHS) is a command for executing and the right side (RHS)
-must be the name of what is being tested.
-
-If the RHS is '*', then the RHS is the default for any argument not listed as
-an LHS.
-
-Both the LHS and RHS must be quoted (single or double quotes).
+If the terminating element in an array is '*', then the rest of the array are
+the default arguments used to run any test.
 
 Blank lines are allowed.  Lines beginning with a '#' are comments (the '#' may
-have spaces in front of it).  Comments are allowed after the RHS.
+have spaces in front of it).
 
 So for the above C<execrc> file, if it's named 'my_execrc' (as it is in the
 C<examples/> directory which comes with this distribution), then you could

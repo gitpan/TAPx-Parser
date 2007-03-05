@@ -3,30 +3,34 @@ package TAPx::Parser::Grammar;
 use strict;
 use vars qw($VERSION);
 
+use TAPx::Parser::Result;
+
 =head1 NAME
 
 TAPx::Parser::Grammar - A grammar for the original TAP version.
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 =head1 DESCRIPTION
 
 C<TAPx::Parser::Gramamr> is actually just a means for identifying individual
-chunks (usually lines) of TAP.  Many of the actual grammar rules are embedded
-in C<TAPx::Parser>.
+chunks (usually lines) of TAP.
 
 Do not attempt to use this class directly.  It won't make sense.  It's mainly
 here to ensure that we will be able to have pluggable grammars when TAP is
 expanded at some future date (plus, this stuff was really cluttering the
 parser).
 
-If you're looking for an EBNF grammar, see L<TAPx::Parser>.
+Note that currently all methods are class methods.  It's intended that this
+will eventually support C<TAP 2.0> and beyond which will necessitate actual
+instance data, but for now, we don't need this.  Hence, the curious decision
+to use a class where one doesn't apparently need one.
 
 =cut
 
@@ -49,13 +53,18 @@ sub new {
 }
 
 # XXX the 'not' and 'ok' might be on separate lines in VMS ...
+my $ok  = qr/(?:not )?ok\b/;
+my $num = qr/\d+/;
 
-my $ok           = qr/(?:not )?ok\b/;
-my $num          = qr/\d+/;
-my $todo_or_skip = qr/\s*(?i:TODO|SKIP)\b/;
-my $description
-  = qr/(?:#(?!$todo_or_skip)|[^\d#])(?:#(?!$todo_or_skip)|[^#])*/;
+# description is *any* which is not followed by an odd number of escapes
+# following by '#':  \\\#   \#
+my $description = qr/.*?(?!\\(?:\\\\)*)#?/;
+
+# if we have an even number of escapes in front of the '#', assert that it
+# does not have an escape in front of it (this gets around the 'no variable
+# length lookbehind assertions')
 my $directive = qr/
+                     (?<!\\)(?:\\\\)*
                      (?i:
                        \#\s+
                        (TODO|SKIP)\b
@@ -65,13 +74,13 @@ my $directive = qr/
 
 my %token_for = (
     plan => {
-        syntax  => qr/^1\.\.(\d+)(?:\s*#\s*SKIP\b(.*))?/i,
+        syntax  => qr/^1\.\.(\d+)(?:\s*#\s*SKIP\b(.*))?\z/i,
         handler => sub {
             my ( $self, $line ) = @_;
             local *__ANON__ = '__ANON__plan_token_handler';
             my $tests_planned = $1;
             my $explanation   = $2;
-            my $skip          =
+            my $skip =
               ( 0 == $tests_planned || defined $explanation )
               ? 'SKIP'
               : '';
@@ -80,7 +89,7 @@ my %token_for = (
                 $line,
                 $tests_planned,
                 $skip,
-                $explanation
+                _trim($explanation),
             );
         },
     },
@@ -123,14 +132,47 @@ my %token_for = (
             my ( $self, $line ) = @_;
             local *__ANON__ = '__ANON__bailout_token_handler';
             my $explanation = $1;
-            return $self->_make_bailout_token( $line, $explanation );
+            return $self->_make_bailout_token( $line, _trim($explanation) );
         },
-    }
+    },
 );
 
 ##############################################################################
 
-=head2 Instance methods
+=head3 C<tokenize>
+
+  my $token = $grammar->tokenize($string);
+
+Passed a line of TAP, this method will return a data structure representing a
+'token' matching that line of TAP input.  Designed to be passed to
+C<TAPx::Parser::Result> to create a result object.
+
+This is really the only method you need to worry about for the grammar.  The
+methods below are merely for convenience, if needed.
+
+=cut
+
+sub tokenize {
+    my $self = shift;
+    return unless @_ && defined $_[0];
+
+    my $line = shift;
+    my $token;
+
+    foreach my $token_data ( values %token_for ) {
+        if ( $line =~ $token_data->{syntax} ) {
+            my $handler = $token_data->{handler};
+            $token = $self->$handler($line);
+            last;
+        }
+    }
+    $token ||= $self->_make_unknown_token($line);
+    return defined $token ? TAPx::Parser::Result->new($token) : ();
+}
+
+##############################################################################
+
+=head2 Class methods
 
 =head3 C<token_types>
 
@@ -255,5 +297,76 @@ sub _trim {
     $data =~ s/\s+$//;
     return $data;
 }
+
+=head1 TAP GRAMMAR
+
+B<NOTE:>  This grammar is slightly out of date.  There's still some discussion
+about it and a new one will be provided when we have things better defined.
+
+The C<TAPx::Parser> does not use a formal grammar because TAP is essentially a
+stream-based protocol.  In fact, it's quite legal to have an infinite stream.
+For the same reason that we don't apply regexes to streams, we're not using a
+formal grammar here.  Instead, we parse the TAP in lines.
+
+For purposes for forward compatability, any result which does not match the
+following grammar is currently referred to as
+L<TAPx::Parser::Result::Unknown>.  It is I<not> a parse error.
+
+A formal grammar would look similar to the following:
+
+ (* 
+     For the time being, I'm cheating on the EBNF by allowing 
+     certain terms to be defined by POSIX character classes by
+     using the following syntax:
+ 
+       digit ::= [:digit:]
+ 
+     As far as I am aware, that's not valid EBNF.  Sue me.  I
+     didn't know how to write "char" otherwise (Unicode issues).  
+     Suggestions welcome.
+ *)
+ 
+ (* POSIX character classes and other terminals *)
+ 
+ digit              ::= [:digit:]
+ character          ::= ([:print:] - "\n")
+ positiveInteger    ::= ( digit - '0' ) {digit}
+ nonNegativeInteger ::= digit {digit}
+ 
+ tap            ::= { comment | unknown } leading_plan lines 
+                    | 
+                    lines trailing_plan {comment}
+ 
+ leading_plan   ::= plan skip_directive? "\n"
+
+ trailing_plan  ::= plan "\n"
+
+ plan           ::= '1..' nonNegativeInteger
+ 
+ lines          ::= line {line}
+
+ line           ::= (comment | test | unknown | bailout ) "\n"
+ 
+ test           ::= status positiveInteger? description? directive?
+ 
+ status         ::= 'not '? 'ok '
+ 
+ description    ::= (character - (digit | '#')) {character - '#'}
+ 
+ directive      ::= todo_directive | skip_directive
+
+ todo_directive ::= hash_mark 'TODO' ' ' {character}
+
+ skip_directive ::= hash_mark 'SKIP' ' ' {character}
+
+ comment        ::= hash_mark {character}
+
+ hash_mark      ::= '#' {' '}
+
+ bailout        ::= 'Bail out!' {character}
+
+ unknown        ::= { (character - "\n") }
+
+=cut
 
 1;

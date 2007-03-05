@@ -15,9 +15,10 @@ WriteMakefile(
     'VERSION_FROM' => 'lib/TAPx/Parser.pm',
     'PREREQ_PM'    => {
         'Test::More' => '0',
-        'Pod::Usage' => '0',   # for 'runtests' utility
+        'Pod::Usage' => '0',    # for 'runtests' utility
     },
     'INSTALLDIRS' => 'site',
     'PL_FILES'    => {},
+    'test'        => { 'TESTS' => 't/*.t t/compat/*.t' },
     @program,
 );

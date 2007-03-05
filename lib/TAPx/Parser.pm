@@ -1,13 +1,16 @@
 package TAPx::Parser;
 
 use strict;
-use vars qw($VERSION);
+use vars qw($VERSION @ISA);
 
+use TAPx::Base;
 use TAPx::Parser::Grammar;
 use TAPx::Parser::Result;
 use TAPx::Parser::Source;
 use TAPx::Parser::Source::Perl;
 use TAPx::Parser::Iterator;
+
+@ISA = qw(TAPx::Base);
 
 =head1 NAME
 
@@ -15,11 +18,11 @@ TAPx::Parser - Parse L<TAP|Test::Harness::TAP> output
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 BEGIN {
     foreach my $method (
@@ -29,6 +32,7 @@ BEGIN {
         _plan_found
         _start_tap
         _stream
+        _spool
         _grammar
         _end_plan_error
         _plan_error_found
@@ -39,6 +43,7 @@ BEGIN {
         tests_planned
         tests_run
         wait
+        in_todo
         >
       )
     {
@@ -65,6 +70,14 @@ BEGIN {
         }
     }
 }
+
+##############################################################################
+
+=head3 C<good_plan>
+
+Deprecated.  Use C<is_good_plan> instead.
+
+=cut
 
 sub good_plan {
     warn 'good_plan() is deprecated.  Please use "is_good_plan()"';
@@ -180,15 +193,15 @@ be used when invoking the perl executable.
      switches => '-Ilib',
  } );
 
+=item * C<spool>
+
+If passed a filehandle will write a copy of all parsed TAP to that handle.
+
 =back
 
 =cut
 
-sub new {
-    my $class = shift;
-    my $self = bless {}, $class;
-    $self->_initialize(@_);
-}
+# new implementation supplied by TAPx::Base
 
 ##############################################################################
 
@@ -204,44 +217,72 @@ sub new {
 This method returns the results of the parsing, one result at a time.  Note
 that it is destructive.  You can't rewind and examine previous results.
 
+If callbacks are used, they will be issued before this call returns.
+
 Each result returned is a subclass of C<TAPx::Parser::Result>.  See that
 module and related classes for more information on how to use them.
 
 =cut
 
-sub next {
+sub _next {
     my $self   = shift;
     my $stream = $self->_stream;
     return if $stream->is_last;
-    my $next = $stream->next;
-    $self->_start_tap( $stream->is_first );
 
-    my @tokens = $self->_lex($next);
-    my $token;
-    if (@tokens) {
-        $token = TAPx::Parser::Result->new(@tokens);
-    }
-    if ( $token && $token->is_test ) {
-        my $count = $self->tests_planned;
-        if ( defined $count && ( $token->number || 0 ) > $count ) {
-            $token->is_unplanned(1);
+    my $result = $self->_grammar->tokenize( $stream->next );
+    $self->_start_tap( $stream->is_first );    # must be after $stream->next
+
+    # we still have to test for $result because of all sort of strange TAP
+    # edge cases (such as '1..0' plans for skipping everything)
+    if ( $result && $result->is_test ) {
+        $self->in_todo( $result->has_todo );
+        $self->tests_run( $self->tests_run + 1 );
+        if ( defined ( my $tests_planned = $self->tests_planned ) ) {
+            if ( $self->tests_run > $tests_planned ) {
+                $result->is_unplanned(1);
+            }
         }
     }
 
     # must set _end_tap first or else _validate chokes on ending plans
+    $self->_validate($result);
     if ( $stream->is_last ) {
         $self->_end_tap(1);
         $self->exit( $stream->exit );
         $self->wait( $stream->wait );
-        $self->_validate($token);
         $self->_finish;
-        return $token;
     }
-    $self->_validate($token);
-    if ( !$token->is_unknown && !$token->is_comment ) {
+    elsif ( !$result->is_unknown && !$result->is_comment ) {
         $self->_can_ignore_output(0);
     }
-    return $token;
+    return $result;
+}
+
+sub next {
+    my $self   = shift;
+    my $result = $self->_next;
+
+    if ( defined $result ) {
+        my $code;
+        if ( $code = $self->_callback_for( $result->type ) ) {
+            $code->($result);
+        }
+        else {
+            $self->_make_callback( 'ELSE', $result );
+        }
+        $self->_make_callback( 'ALL', $result );
+
+        # Echo TAP to spool file
+        $self->_write_to_spool($result);
+    }
+
+    return $result;
+}
+
+sub _write_to_spool {
+    my ( $self, $result ) = @_;
+    my $spool = $self->_spool or return;
+    print $spool $result->raw, "\n";
 }
 
 ##############################################################################
@@ -250,25 +291,15 @@ sub next {
 
   $parser->run;
 
-This method merely runs the parser and parses all of the TAP.  If callbacks
-are used, it will attempt to call the appropriate callback with the TAP result
-as the argument.
+This method merely runs the parser and parses all of the TAP.
 
 =cut
 
 sub run {
     my $self = shift;
     while ( defined( my $result = $self->next ) ) {
-        my $code;
-        if ( $code = $self->_callback_for( $result->type ) ) {
-            $code->($result);
-        }
-        elsif ( $code = $self->_callback_for('ELSE') ) {
-            $code->($result);
-        }
-        if ( my $code = $self->_callback_for('ALL') ) {
-            $code->($result);
-        }
+
+        # do nothing
     }
 }
 
@@ -298,13 +329,13 @@ sub run {
     # We seem to have this list hanging around all over the place. We could
     # probably get it from somewhere else to avoid the repetition.
     my @legal_callback = qw(
-        test
-        plan
-        comment
-        bailout
-        unknown
-        ALL
-        ELSE
+      test
+      plan
+      comment
+      bailout
+      unknown
+      ALL
+      ELSE
     );
 
     sub _initialize {
@@ -313,11 +344,15 @@ sub run {
         # everything here is basically designed to convert any TAP source to a
         # stream.
         $arg_for ||= {};
+
+        $self->SUPER::_initialize( $arg_for, \@legal_callback );
+
         my $stream = delete $arg_for->{stream};
         my $tap    = delete $arg_for->{tap};
         my $source = delete $arg_for->{source};
         my $exec   = delete $arg_for->{exec};
         my $merge  = delete $arg_for->{merge};
+        my $spool  = delete $arg_for->{spool};
         if ( 1 < grep {defined} $stream, $tap, $source ) {
             $self->_croak(
                 "You may only choose one of 'stream', 'tap', or'source'");
@@ -351,7 +386,7 @@ sub run {
                 my $perl = TAPx::Parser::Source::Perl->new;
                 $perl->switches( $arg_for->{switches} )
                   if $arg_for->{switches};
-                  
+
                 $stream = $perl->source($source)->get_stream;
                 if ( defined $stream ) {
                     if ( defined $stream->exit ) {
@@ -376,49 +411,13 @@ sub run {
         $self->_end_tap(undef);
         $self->_grammar( TAPx::Parser::Grammar->new($self) )
           ;    # eventually pass a version
+        $self->_spool($spool);
 
         while ( my ( $k, $v ) = each %initialize ) {
             $self->{$k} = 'ARRAY' eq ref $v ? [] : $v;
         }
-                
-        $self->{code_for} = $arg_for->{callbacks} || {};
-
-        my $ok_callback   = '^' . join('|', @legal_callback) . '$';
-        my @bad_callbacks = grep { $_ !~ $ok_callback } 
-                            sort keys %{ $self->{code_for} };
-
-        if (@bad_callbacks) {
-            $self->_croak("The following callback names are not supported: " . 
-                join(', ', @bad_callbacks));
-        }
 
         return $self;
-    }
-}
-
-sub _callback_for {
-    my ( $self, $callback ) = @_;
-    return $self->{code_for}{$callback};
-}
-
-{
-    my @tokens;
-    my $first_token = 1;
-
-    sub _tokens {
-        my $self  = shift;
-        my $token = shift @tokens;
-        if ($first_token) {
-            $self->_start_tap(1);
-            $first_token = 0;
-        }
-        else {
-            $self->_start_tap(0);
-        }
-        unless (@tokens) {
-            $self->_end_tap(1);
-        }
-        return $token;
     }
 }
 
@@ -684,6 +683,14 @@ directive.
 Note that TODO tests I<always> pass.  If you need to know whether or not
 they really passed, check the C<is_actual_ok> method.
 
+=head3 C<in_todo>
+
+  if ( $parser->in_todo ) { ... }
+  
+True while the most recent result was a TODO. Becomes true before the
+TODO result is returned and stays true until just before the next non-
+TODO test is returned.
+
 =head1 TOTAL RESULTS
 
 After parsing the TAP, there are many methods available to let you dig through
@@ -792,7 +799,8 @@ succeeded.  Will now issue a warning and call C<todo_passed>.
 =cut
 
 sub todo_failed {
-    warn '"todo_failed" is deprecated.  Please use "todo_passed".  See the docs.';
+    warn
+      '"todo_failed" is deprecated.  Please use "todo_passed".  See the docs.';
     goto &todo_passed;
 }
 
@@ -822,7 +830,11 @@ failed, any TODO tests unexpectedly succeeded, or any parse errors.
 
 sub has_problems {
     my $self = shift;
-    return $self->failed || $self->todo_passed || $self->parse_errors;
+    return $self->failed
+      || $self->todo_passed
+      || $self->parse_errors
+      || $self->wait
+      || $self->exit;
 }
 
 ##############################################################################
@@ -957,7 +969,6 @@ sub _aggregate_results {
         test => sub {
             my ( $self, $test ) = @_;
             local *__ANON__ = '__ANON__test_validation';
-            $self->tests_run( $self->tests_run + 1 );
 
             $self->_check_ending_plan;
             if ( $test->number ) {
@@ -1029,28 +1040,6 @@ sub _aggregate_results {
     }
 }
 
-sub _lex {
-    my ( $self, $tap ) = @_;
-    my @remaining_tap = defined $tap ? $tap : ();
-
-    my @tokens;
-    my $grammar = $self->_grammar;
-    LINE: foreach my $line (@remaining_tap) {
-
-        # XXX this is going to cause issues with streams
-        foreach my $type ( $grammar->token_types ) {
-            my $syntax = $grammar->syntax_for($type);
-            if ( $line =~ $syntax ) {
-                my $handler = $grammar->handler_for($type);
-                push @tokens => $grammar->$handler($line);
-                next LINE;
-            }
-        }
-        push @tokens => $grammar->_make_unknown_token($line);
-    }
-    return @tokens;
-}
-
 sub _finish {
     my $self = shift;
 
@@ -1087,12 +1076,6 @@ sub _finish {
     return $self;
 }
 
-sub _croak {
-    my ( $self, $message ) = @_;
-    require Carp;
-    Carp::croak($message);
-}
-
 ##############################################################################
 
 =head2 CALLBACKS
@@ -1122,6 +1105,11 @@ anonymous subroutine) which is invoked with the parser result as its argument.
      $parser->run;
      $aggregator->add( $file, $parser );
  }
+
+Callbacks may also be added like this:
+
+ $parser->callback( test => \&test_callback );
+ $parser->callback( plan => \&plan_callback );
 
 There are, at the present time, seven keys allowed for callbacks.  These keys
 are case-sensitive.
@@ -1197,60 +1185,7 @@ See C<examples/tprove_color> for an example of this.
 
 =head1 TAP GRAMMAR
 
-B<NOTE:>  This grammar is slightly out of date.  There's still some discussion
-about it and a new one will be provided when we have things better defined.
-
-The C<TAPx::Parser> does not use a formal grammar because TAP is essentially a
-stream-based protocol.  In fact, it's quite legal to have an infinite stream.
-For the same reason that we don't apply regexes to streams, we're not using a
-formal grammar here.  Instead, we parse the TAP in lines.
-
-For purposes for forward compatability, any result which does not match the
-following grammar is currently referred to as
-L<TAPx::Parser::Result::Unknown>.  It is I<not> a parse error.
-
-A formal grammar would look similar to the following:
-
- (* 
-     For the time being, I'm cheating on the EBNF by allowing 
-     certain terms to be defined by POSIX character classes by
-     using the following syntax:
- 
-       digit ::= [:digit:]
- 
-     As far as I am away, that's not valid EBNF.  Sue me.  I
-     didn't know how to write "char" otherwise (Unicode issues).  
-     Suggestions welcome.
- *)
- 
- (* POSIX character classes and other terminals *)
- 
- digit              ::= [:digit:]
- character          ::= ([:print:] - "\n")
- positiveInteger    ::= ( digit - '0' ) {digit}
- nonNegativeInteger ::= digit {digit}
- 
- tap         ::= {comment} plan lines | lines plan {comment}
- 
- plan        ::= '1..' nonNegativeInteger "\n"
- 
- lines       ::= line {line}
-
- line        ::= (comment | test | junk ) "\n"
- 
- tests       ::= test {test}
- 
- test        ::= status positiveInteger? description? directive?
- 
- status      ::= 'not '? 'ok '
- 
- description ::= (character - (digit | '#')) {character - '#'}
- 
- directive   ::= '#' ( 'TODO' | 'SKIP' ) ' ' {character}
-
- comment     ::= '#' {character}
-
- junk        ::= character {character}
+If you're looking for an EBNF grammar, see L<TAPx::Parser::Grammar>.
 
 =head1 BACKWARDS COMPATABILITY
 

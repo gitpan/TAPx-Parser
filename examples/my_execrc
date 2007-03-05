@@ -1,10 +1,24 @@
-# This is the default for all files
+---
+tests:
+# this is the default for all files
+  -
+    - /usr/bin/perl
+    - -wT
+    - *
 
-'/usr/bin/perl -wT' => '*'
+# whoops!  We have a ruby test here!
+  -
+    - /usr/bin/ruby
+    - t/ruby.t
 
-# whoops!  Looks like a ruby test got in there
-'/usr/bin/ruby' => 't/ruby.t'
-
-# let's see if we can test fetching web pages!
-'/usr/bin/perl -w bin/test_html.pl' => 'http://www.google.com/'
-'/usr/bin/perl -w bin/test_html.pl' => 'http://www.yahoo.com/'
+# let's test some web pages
+  -
+    - /usr/bin/perl
+    - -w
+    - bin/test_html.pl
+    - http://www.google.com/
+  -
+    - /usr/bin/perl
+    - -w
+    - bin/test_html.pl
+    - http://www.yahoo.com/

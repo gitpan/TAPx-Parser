@@ -9,16 +9,75 @@ use TAPx::Harness;
 use vars qw($VERSION @ISA);
 @ISA = 'TAPx::Harness';
 
+use constant IS_WIN32 => ( $^O =~ /^(MS)?Win32$/ );
+
 my $NO_COLOR;
 
 BEGIN {
     $NO_COLOR = 0;
-    if ( $^O ne 'MSWin32' ) {
-        eval 'use Term::ANSIColor';
-        $NO_COLOR = $@ if $@;
+
+    if (IS_WIN32) {
+        eval 'use Win32::Console';
+        if ($@) {
+            $NO_COLOR = $@;
+        }
+        else {
+            my $console = Win32::Console->new( STD_OUTPUT_HANDLE() );
+
+            # eval here because we might not know about these variables
+            my $fg = eval '$FG_LIGHTGRAY';
+            my $bg = eval '$BG_BLACK';
+
+            *_set_color = sub {
+                my $self  = shift;
+                my $color = shift;
+
+                my $var;
+                if ( $color eq 'reset' ) {
+                    $fg = eval '$FG_LIGHTGRAY';
+                    $bg = eval '$BG_BLACK';
+                }
+                elsif ( $color =~ /^on_(.+)$/ ) {
+                    $bg = eval '$BG_' . uc($1);
+                }
+                else {
+                    $fg = eval '$FG_' . uc($color);
+                }
+
+                # In case of colors that aren't defined
+                $self->_set_color('reset')
+                  unless defined $bg && defined $fg;
+
+                $console->Attr( $bg | $fg );
+            };
+
+           # Not sure if we'll have buffering problems using print instead
+           # of $console->Write(). Don't want to override output unnecessarily
+           # though and it /seems/ to work OK.
+           #
+           # *output = sub {
+           #     my $self = shift;
+           #     $console->Write($_) for @_;
+           #     #print @_;
+           # };
+        }
     }
     else {
-        warn "Color test output disabled on Windows";
+        eval 'use Term::ANSIColor';
+        if ($@) {
+            $NO_COLOR = $@;
+        }
+        else {
+            *_set_color = sub {
+                my $self  = shift;
+                my $color = shift;
+                $self->output( color($color) );
+            };
+        }
+    }
+
+    if ($NO_COLOR) {
+        *_set_color = sub { };
     }
 }
 
@@ -28,11 +87,11 @@ TAPx::Harness::Color - Run Perl test scripts with color
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 =head1 DESCRIPTION
 
@@ -94,40 +153,42 @@ red.
 
 sub failure_output {
     my $self = shift;
-    $self->_output_color( 'red' );
-    $self->output(@_);
-    $self->_output_color( 'reset' );
+    $self->_set_colors('red');
+    my $out = join( '', @_ );
+    my $has_newline = chomp $out;
+    $self->output($out);
+    $self->_set_colors('reset');
+    $self->output($/)
+      if $has_newline;
 }
 
-# Output ANSI color escape sequence conditionally
-sub _output_color {
+# Set terminal color
+sub _set_colors {
     my $self = shift;
-    unless ( $NO_COLOR ) { 
-        for my $color ( @_ ) {
-            $self->output( color($color) );
-        }
+    for my $color (@_) {
+        $self->_set_color($color);
     }
 }
 
 sub _process {
-    my ( $self, $result ) = @_;
-    $self->_output_color( 'reset' );
-    return unless $self->_should_display($result);
+    my ( $self, $parser, $result ) = @_;
+    $self->_set_colors('reset');
+    return unless $self->_should_display( $parser, $result );
 
     if ( $result->is_test ) {
         if ( !$result->is_ok ) {    # even if it's TODO
-            $self->_output_color( 'red' );
+            $self->_set_colors('red');
         }
         elsif ( $result->has_skip ) {
-            $self->_output_color( 'white on_blue' );
+            $self->_set_colors( 'white', 'on_blue' );
 
         }
         elsif ( $result->has_todo ) {
-            $self->_output_color( 'white' );
+            $self->_set_colors('white');
         }
     }
     $self->output( $result->as_string );
-    $self->_output_color( 'reset' );
+    $self->_set_colors('reset');
     $self->output("\n");
 }
 

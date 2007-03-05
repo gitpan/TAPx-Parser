@@ -4,16 +4,35 @@ use strict;
 
 use lib 'lib';
 
-use Test::More 'no_plan';    # tests => 30;
+use Test::More tests => 122;
+
+# these tests cannot be run from the t/ directory due to checking for the
+# existence of execrc
+
+END {
+
+    # we push this at the end because there are annoying problem with other
+    # modules which check $^O
+    my @warnings;
+    local $^O = 'MSWin32';
+    $SIG{__WARN__} = sub { @warnings = shift };
+    delete $INC{'TAPx/Harness/Color.pm'};
+    use_ok 'TAPx::Harness::Color';
+    ok my $harness = TAPx::Harness::Color->new,
+      '... and loading it on windows should succeed';
+    isa_ok $harness, 'TAPx::Harness', '... but the object it returns';
+
+    ok grep( {qr/^Color test output disabled on Windows/} @warnings ),
+      'Using TAPx::Harness::Color on Windows should disable colored output';
+
+}
+
 use TAPx::Harness;
 use TAPx::Harness::Color;
 
 # note that this test will always pass when run through 'prove'
 ok $ENV{HARNESS_ACTIVE},  'HARNESS_ACTIVE env variable should be set';
 ok $ENV{HARNESS_VERSION}, 'HARNESS_VERSION env variable should be set';
-
-# these tests cannot be run from the t/ directory due to checking for the
-# existence of execrc
 
 foreach my $HARNESS (qw<TAPx::Harness TAPx::Harness::Color>) {
     can_ok $HARNESS, 'new';
@@ -68,19 +87,30 @@ foreach my $HARNESS (qw<TAPx::Harness TAPx::Harness::Color>) {
 {
     my @output;
     local $^W;
+    local *TAPx::Harness::_should_show_count = sub {0};
     local *TAPx::Harness::output = sub {
         my $self = shift;
-        push @output => @_;
+        push @output => grep { $_ ne '' }
+          map {
+            local $_ = $_;
+            chomp;
+            trim($_)
+          } @_;
     };
-    my $harness = TAPx::Harness->new( { verbose => 1 } );
+    my $harness            = TAPx::Harness->new( { verbose      => 1 } );
+    my $harness_whisper    = TAPx::Harness->new( { quiet        => 1 } );
+    my $harness_mute       = TAPx::Harness->new( { really_quiet => 1 } );
+    my $harness_directives = TAPx::Harness->new( { directives   => 1 } );
     can_ok $harness, 'runtests';
+
+    # normal tests in verbose mode
+
     $harness->runtests('t/source_tests/harness');
 
     chomp(@output);
 
     my @expected = (
         't/source_tests/harness....',
-        '',
         '1..1',
         'ok 1 - this is a test',
         'ok',
@@ -94,21 +124,55 @@ foreach my $HARNESS (qw<TAPx::Harness TAPx::Harness::Color>) {
     like $summary, $expected_summary,
       '... and the report summary should look correct';
 
+    # normal tests in quiet mode
+
+    @output = ();
+    $harness_whisper->runtests('t/source_tests/harness');
+
+    chomp(@output);
+    @expected = (
+        't/source_tests/harness....',
+        'ok',
+        'All tests successful.',
+    );
+
+    $summary          = pop @output;
+    $expected_summary = qr/^Files=1, Tests=1,  \d+ wallclock secs/;
+
+    is_deeply \@output, \@expected, '... and the output should be correct';
+    like $summary, $expected_summary,
+      '... and the report summary should look correct';
+
+    # normal tests in really_quiet mode
+
+    @output = ();
+    $harness_mute->runtests('t/source_tests/harness');
+
+    chomp(@output);
+    @expected = (
+        'All tests successful.',
+    );
+
+    $summary          = pop @output;
+    $expected_summary = qr/^Files=1, Tests=1,  \d+ wallclock secs/;
+
+    is_deeply \@output, \@expected, '... and the output should be correct';
+    like $summary, $expected_summary,
+      '... and the report summary should look correct';
+
+    # normal tests with failures
+
     @output = ();
     $harness->runtests('t/source_tests/harness_failure');
-    chomp(@output);
 
-    @output = map { trim($_) } @output;
-    my @summary = @output[ 7 .. 11 ];
-    @output   = @output[ 0 .. 6 ];
+    my @summary = @output[ 5 .. ( $#output - 1 ) ];
+    @output   = @output[ 0 .. 4 ];
     @expected = (
         't/source_tests/harness_failure....',
-        '',
         '1..2',
         'ok 1 - this is a test',
         'not ok 2 - this is another test',
-        'Failed 1/2 tests',
-        '',
+        'Failed 1/2 subtests',
     );
     is_deeply \@output, \@expected,
       '... and failing test output should be correct';
@@ -121,6 +185,140 @@ foreach my $HARNESS (qw<TAPx::Harness TAPx::Harness::Color>) {
     );
     is_deeply \@summary, \@expected_summary,
       '... and the failure summary should also be correct';
+
+    # quiet tests with failures
+
+    @output = ();
+    $harness_whisper->runtests('t/source_tests/harness_failure');
+
+    pop @output;    # get rid of summary line
+    @expected = (
+        't/source_tests/harness_failure....',
+        'Failed 1/2 subtests',
+        'Test Summary Report',
+        '-------------------',
+        't/source_tests/harness_failure (Wstat: 0 Tests: 2 Failed: 1)',
+        'Failed tests:',
+        '2',
+    );
+    is_deeply \@output, \@expected,
+      '... and failing test output should be correct';
+
+    # really quiet tests with failures
+
+    @output = ();
+    $harness_mute->runtests('t/source_tests/harness_failure');
+
+    pop @output;    # get rid of summary line
+    @expected = (
+        'Test Summary Report',
+        '-------------------',
+        't/source_tests/harness_failure (Wstat: 0 Tests: 2 Failed: 1)',
+        'Failed tests:',
+        '2',
+    );
+    is_deeply \@output, \@expected,
+      '... and failing test output should be correct';
+
+    # only show directives
+
+    @output = ();
+    $harness_directives->runtests('t/source_tests/harness_directives');
+
+    chomp(@output);
+
+    @expected = (
+        't/source_tests/harness_directives....',
+        'not ok 2 - we have a something # TODO some output',
+        "ok 3 houston, we don't have liftoff # SKIP no funding",
+        'ok',
+        'All tests successful.',
+        'Test Summary Report',
+        '-------------------',
+        't/source_tests/harness_directives (Wstat: 0 Tests: 3 Failed: 0)',
+        'Tests skipped:',
+        '3',
+    );
+
+    $summary          = pop @output;
+    $expected_summary = qr/^Files=1, Tests=3,  \d+ wallclock secs/;
+
+    is_deeply \@output, \@expected, '... and the output should be correct';
+    like $summary, $expected_summary,
+      '... and the report summary should look correct';
+
+
+    # normal tests with bad tap
+
+    # install callback handler
+    my $parser;
+    my $callback_count = 0;
+    $harness->callback(
+        made_parser => sub {
+            $parser = shift;
+            $callback_count++;
+        }
+    );
+
+    @output = ();
+    $harness->runtests('t/source_tests/harness_badtap');
+    chomp(@output);
+
+    @output = map { trim($_) } @output;
+    @summary  = @output[ 6 .. ( $#output - 1 ) ];
+    @output   = @output[ 0 .. 5 ];
+    @expected = (
+        't/source_tests/harness_badtap....',
+        '1..2',
+        'ok 1 - this is a test',
+        'not ok 2 - this is another test',
+        '1..2',
+        'Failed 1/2 subtests',
+    );
+    is_deeply \@output, \@expected,
+      '... and failing test output should be correct';
+    @expected_summary = (
+        'Test Summary Report',
+        '-------------------',
+        't/source_tests/harness_badtap (Wstat: 0 Tests: 2 Failed: 1)',
+        'Failed tests:',
+        '2',
+        'Parse errors: More than one plan found in TAP output'
+    );
+    is_deeply \@summary, \@expected_summary,
+      '... and the badtap summary should also be correct';
+
+    cmp_ok( $callback_count, '==', 1, 'callback called once' );
+    isa_ok $parser, 'TAPx::Parser';
+}
+
+{
+    my @output;
+    local $^W;
+    local *TAPx::Harness::_should_show_count = sub {0};
+    local *TAPx::Harness::output = sub {
+        my $self = shift;
+        push @output => grep { $_ ne '' }
+          map {
+            local $_ = $_;
+            chomp;
+            trim($_)
+          } @_;
+    };
+    my $harness = TAPx::Harness->new(
+        {   verbose => 1,
+            exec    => [$^X]
+        }
+    );
+
+    $harness->runtests(
+        't/source_tests/harness_complain',    # will get mad if run with args
+        't/source_tests/harness',
+    );
+
+    chomp(@output);
+    pop @output;                              # get rid of summary line
+    is( $output[-1], 'All tests successful.', 'No exec accumulation' );
 }
 
 sub trim {
@@ -172,8 +370,8 @@ sub get_arg_sets {
       },
 
       { really_quiet => {
-            in        => 1,
-            out       => 1,
+            in  => 1,
+            out => 1,
             test_name =>
               '... and we should be able to set really_quiet to true',
         },

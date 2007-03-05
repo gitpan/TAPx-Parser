@@ -14,11 +14,11 @@ TAPx::Parser::Result::Test - Test result token.
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 =head1 DESCRIPTION
 
@@ -196,8 +196,7 @@ succeeded.  Will now issue a warning and call C<todo_passed>.
 =cut
 
 sub todo_failed {
-    warn
-      'todo_failed() is deprecated.  Please use "todo_passed()"';
+    warn 'todo_failed() is deprecated.  Please use "todo_passed()"';
     goto &todo_passed;
 }
 
@@ -210,24 +209,12 @@ sub todo_failed {
 Returns a boolean value indicating whether or not this test has a SKIP
 directive.
 
-=cut
-
-sub has_skip { 'SKIP' eq shift->{directive} }
-
-##############################################################################
-
 =head3 C<has_todo>
 
   if ( $result->has_todo ) { ... }
 
 Returns a boolean value indicating whether or not this test has a TODO
 directive.
-
-=cut
-
-sub has_todo { 'TODO' eq shift->{directive} }
-
-##############################################################################
 
 =head3 C<as_string>
 

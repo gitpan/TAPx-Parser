@@ -1,7 +1,6 @@
 #!/usr/bin/perl -wT
 use strict;
 
-
 use Test::More qw/no_plan/;
 
 ok 1, 'this test passes';

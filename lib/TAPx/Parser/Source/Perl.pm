@@ -17,11 +17,11 @@ TAPx::Parser::Source::Perl - Stream Perl output
 
 =head1 VERSION
 
-Version 0.50_06
+Version 0.50_07
 
 =cut
 
-$VERSION = '0.50_06';
+$VERSION = '0.50_07';
 
 =head1 DESCRIPTION
 
@@ -66,7 +66,7 @@ sub source {
     unless ( -f $filename ) {
         $self->_croak("Cannot find ($filename)");
     }
-    $self->{source} = $filename;    
+    $self->{source} = $filename;
     return $self;
 }
 
@@ -100,7 +100,8 @@ sub _get_command {
     my @switches = $self->_switches;
 
     $file = qq["$file"] if ( $file =~ /\s/ ) && ( $file !~ /^".*"$/ );
-    my @command = ($command, @switches, $file);
+    my @command = ( $command, @switches, $file );
+
     #use Data::Dumper;
     #warn Dumper(\@command);
     return @command;
@@ -110,7 +111,7 @@ sub _switches {
     my $self     = shift;
     my $file     = $self->source;
     my @switches = (
-         $self->switches,
+        $self->switches,
     );
 
     local *TEST;
@@ -174,12 +175,13 @@ sub _filtered_inc {
     # cache this to avoid repeatedly shelling out to Perl.  This really speeds
     # up TAPx::Parser.
     my @inc;
+
     sub _default_inc {
         return @inc if @inc;
         my $proto = shift;
         local $ENV{PERL5LIB};
         my $perl = $proto->_get_perl;
-        chomp(@inc  = `$perl -le "print join qq[\\n], \@INC"`);
+        chomp( @inc = `$perl -le "print join qq[\\n], \@INC"` );
         return @inc;
     }
 }
